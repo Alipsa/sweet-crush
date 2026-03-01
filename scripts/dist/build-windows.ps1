@@ -20,7 +20,7 @@ $arch = $env:PROCESSOR_ARCHITECTURE
 if ([string]::IsNullOrWhiteSpace($arch)) {
     $arch = "x64"
 }
-$bundleName = "$ArtifactId-windows-$arch"
+$bundleName = "$ArtifactId-$Version-windows-$arch"
 $bundleDir = Join-Path $distRoot $bundleName
 $appDir = Join-Path $bundleDir "app"
 $appLibDir = Join-Path $appDir "lib"
