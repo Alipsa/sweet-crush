@@ -56,7 +56,7 @@ if [[ ! -d "${INPUT_LIB_DIR}" ]]; then
 fi
 
 rm -rf "${BUNDLE_DIR}" "${INPUT_DIR}" "${RUNTIME_DIR}" "${ZIP_FILE}"
-mkdir -p "${INPUT_DIR}" "${RUNTIME_DIR}"
+mkdir -p "${INPUT_DIR}"
 
 cp "${APP_JAR}" "${INPUT_DIR}/sweet-crush.jar"
 INPUT_JARS=()
