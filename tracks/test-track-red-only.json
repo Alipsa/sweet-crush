@@ -1,0 +1,17 @@
+{
+  "id": "test-red-only",
+  "name": "Red Only Challenge",
+  "width": 7,
+  "height": 9,
+  "moves": 25,
+  "targetScore": 600,
+  "scoreColors": ["RED"],
+  "spawnWeights": {
+    "RED": 4,
+    "BLUE": 2,
+    "GREEN": 2,
+    "YELLOW": 2,
+    "PURPLE": 2,
+    "ORANGE": 1
+  }
+}

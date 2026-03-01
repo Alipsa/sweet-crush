@@ -1,0 +1,16 @@
+{
+  "id": "test-01",
+  "name": "Test Track 01",
+  "width": 7,
+  "height": 9,
+  "moves": 25,
+  "targetScore": 1500,
+  "spawnWeights": {
+    "RED": 3,
+    "BLUE": 3,
+    "GREEN": 3,
+    "YELLOW": 2,
+    "PURPLE": 2,
+    "ORANGE": 1
+  }
+}

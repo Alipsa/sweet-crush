@@ -1,0 +1,54 @@
+name: Build Distributions
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-distributions:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux Distribution
+            os: ubuntu-latest
+            profile: dist-linux
+            artifact_name: sweet-crush-linux
+          - name: macOS Distribution
+            os: macos-latest
+            profile: dist-macos
+            artifact_name: sweet-crush-macos
+          - name: Windows Distribution
+            os: windows-latest
+            profile: dist-windows
+            artifact_name: sweet-crush-windows
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Ensure distribution scripts are executable
+        if: runner.os != 'Windows'
+        run: chmod +x scripts/dist/*.sh
+
+      - name: Build platform distribution
+        run: mvn -B -P${{ matrix.profile }} clean package -DskipTests
+
+      - name: Upload distribution zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: target/dist/sweet-crush-*.zip
+          if-no-files-found: error

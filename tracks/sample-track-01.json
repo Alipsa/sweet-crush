@@ -1,0 +1,22 @@
+{
+  "id": "classic-01",
+  "name": "Classic Level 1",
+  "width": 7,
+  "height": 9,
+  "moves": 25,
+  "targetScore": 1500,
+  "specialPieces": {
+    "SWEEPER": 5,
+    "SMALL_BOMB": 5,
+    "BOMB": 5,
+    "FISH": 5
+  },
+  "spawnWeights": {
+    "RED": 3,
+    "BLUE": 3,
+    "GREEN": 2,
+    "YELLOW": 2,
+    "PURPLE": 2,
+    "ORANGE": 2
+  }
+}
