@@ -59,14 +59,20 @@ rm -rf "${BUNDLE_DIR}" "${INPUT_DIR}" "${RUNTIME_DIR}" "${ZIP_FILE}"
 mkdir -p "${INPUT_DIR}" "${RUNTIME_DIR}"
 
 cp "${APP_JAR}" "${INPUT_DIR}/sweet-crush.jar"
-mapfile -t INPUT_JARS < <(find "${INPUT_LIB_DIR}" -maxdepth 1 -type f -name "*.jar" | sort)
+INPUT_JARS=()
+while IFS= read -r jar; do
+  INPUT_JARS+=("${jar}")
+done < <(find "${INPUT_LIB_DIR}" -maxdepth 1 -type f -name "*.jar" | sort)
 if [[ ${#INPUT_JARS[@]} -eq 0 ]]; then
   echo "No dependency jars found in ${INPUT_LIB_DIR}" >&2
   exit 1
 fi
 cp "${INPUT_JARS[@]}" "${INPUT_DIR}/"
 
-mapfile -t LIB_JARS < <(find "${INPUT_DIR}" -maxdepth 1 -type f -name "*.jar" ! -name "sweet-crush.jar" | sort)
+LIB_JARS=()
+while IFS= read -r jar; do
+  LIB_JARS+=("${jar}")
+done < <(find "${INPUT_DIR}" -maxdepth 1 -type f -name "*.jar" ! -name "sweet-crush.jar" | sort)
 CLASSPATH=""
 if [[ ${#LIB_JARS[@]} -gt 0 ]]; then
   CLASSPATH="$(IFS=:; echo "${LIB_JARS[*]}")"

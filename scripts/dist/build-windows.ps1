@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = "Stop"
 $javaRelease = "25"
 
-if (-not $IsWindows) {
+if ($env:OS -ne "Windows_NT") {
     throw "build-windows.ps1 must be run on Windows."
 }
 
