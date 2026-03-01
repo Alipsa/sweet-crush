@@ -11,7 +11,7 @@ TARGET_DIR=$2
 ARTIFACT_ID=$3
 VERSION=$4
 MAIN_CLASS=$5
-JAVA_RELEASE=25
+MODULES="java.base,java.desktop,java.logging,java.management,java.prefs,jdk.unsupported"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
   echo "build-macos.sh must be run on macOS." >&2
@@ -28,13 +28,9 @@ INPUT_DIR="${DIST_ROOT}/input/macos"
 RUNTIME_DIR="${DIST_ROOT}/runtime/macos"
 ZIP_FILE="${DIST_ROOT}/${BUNDLE_NAME}.zip"
 
-JDEPS_BIN="${JAVA_HOME:-}/bin/jdeps"
 JLINK_BIN="${JAVA_HOME:-}/bin/jlink"
 JPACKAGE_BIN="${JAVA_HOME:-}/bin/jpackage"
 
-if [[ ! -x "${JDEPS_BIN}" ]]; then
-  JDEPS_BIN="$(command -v jdeps)"
-fi
 if [[ ! -x "${JLINK_BIN}" ]]; then
   JLINK_BIN="$(command -v jlink)"
 fi
@@ -42,8 +38,8 @@ if [[ ! -x "${JPACKAGE_BIN}" ]]; then
   JPACKAGE_BIN="$(command -v jpackage)"
 fi
 
-if [[ -z "${JDEPS_BIN}" || -z "${JLINK_BIN}" || -z "${JPACKAGE_BIN}" ]]; then
-  echo "Missing required tools (jdeps, jlink, jpackage)." >&2
+if [[ -z "${JLINK_BIN}" || -z "${JPACKAGE_BIN}" ]]; then
+  echo "Missing required tools (jlink, jpackage)." >&2
   exit 1
 fi
 if [[ ! -f "${APP_JAR}" ]]; then
@@ -68,31 +64,6 @@ if [[ ${#INPUT_JARS[@]} -eq 0 ]]; then
   exit 1
 fi
 cp "${INPUT_JARS[@]}" "${INPUT_DIR}/"
-
-LIB_JARS=()
-while IFS= read -r jar; do
-  LIB_JARS+=("${jar}")
-done < <(find "${INPUT_DIR}" -maxdepth 1 -type f -name "*.jar" ! -name "sweet-crush.jar" | sort)
-CLASSPATH=""
-if [[ ${#LIB_JARS[@]} -gt 0 ]]; then
-  CLASSPATH="$(IFS=:; echo "${LIB_JARS[*]}")"
-fi
-
-JDEPS_ARGS=(--ignore-missing-deps --recursive --multi-release "${JAVA_RELEASE}" --print-module-deps)
-if [[ -n "${CLASSPATH}" ]]; then
-  JDEPS_ARGS+=(--class-path "${CLASSPATH}")
-fi
-MODULES="$("${JDEPS_BIN}" "${JDEPS_ARGS[@]}" "${INPUT_DIR}/sweet-crush.jar")"
-MODULES="${MODULES//[$'\r\n\t ']/}"
-if [[ -z "${MODULES}" ]]; then
-  MODULES="java.base,java.desktop"
-fi
-if [[ ",${MODULES}," != *",java.desktop,"* ]]; then
-  MODULES="${MODULES},java.desktop"
-fi
-if [[ ",${MODULES}," != *",jdk.unsupported,"* ]]; then
-  MODULES="${MODULES},jdk.unsupported"
-fi
 
 "${JLINK_BIN}" \
   --add-modules "${MODULES}" \

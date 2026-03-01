@@ -7,7 +7,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$javaRelease = "25"
+$modules = "java.base,java.desktop,java.logging,java.management,java.prefs,jdk.unsupported"
 
 if ($env:OS -ne "Windows_NT") {
     throw "build-windows.ps1 must be run on Windows."
@@ -41,7 +41,6 @@ function Resolve-Tool([string]$toolName) {
     throw "Missing required tool: $toolName"
 }
 
-$jdeps = Resolve-Tool "jdeps"
 $jlink = Resolve-Tool "jlink"
 
 if (-not (Test-Path $appJar)) {
@@ -68,24 +67,6 @@ $inputJars | Copy-Item -Destination $appLibDir
 $tracksDir = Join-Path $BaseDir "tracks"
 if (Test-Path $tracksDir) {
     Copy-Item -Recurse $tracksDir (Join-Path $bundleDir "tracks")
-}
-
-$libJars = Get-ChildItem -Path (Join-Path $appLibDir "*.jar") -File | Sort-Object FullName | ForEach-Object { $_.FullName }
-$classPath = [string]::Join(';', $libJars)
-$jdepsArgs = @("--ignore-missing-deps", "--recursive", "--multi-release", $javaRelease, "--print-module-deps")
-if (-not [string]::IsNullOrWhiteSpace($classPath)) {
-    $jdepsArgs += @("--class-path", $classPath)
-}
-$modules = (& $jdeps @jdepsArgs (Join-Path $appDir "sweet-crush.jar")) -join ""
-$modules = ($modules -replace "\s", "").Trim()
-if ([string]::IsNullOrWhiteSpace($modules)) {
-    $modules = "java.base,java.desktop"
-}
-if ($modules -notmatch "(^|,)java\.desktop(,|$)") {
-    $modules += ",java.desktop"
-}
-if ($modules -notmatch "(^|,)jdk\.unsupported(,|$)") {
-    $modules += ",jdk.unsupported"
 }
 
 & $jlink `
