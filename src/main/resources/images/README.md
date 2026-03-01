@@ -1,5 +1,5 @@
 # Candy Assets
 
-These candy PNG images and the app icon were generated in-repository for Sweet Crush and are not third-party assets.
+These candy icons (SVG), special-piece visuals, and the app icon were created in-repository for Sweet Crush.
 
-License: CC0-1.0 (public domain dedication) by the Sweet Crush project maintainers.
+They are original project assets and are not sourced from third-party asset packs.
