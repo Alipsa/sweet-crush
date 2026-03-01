@@ -9,7 +9,17 @@ class GameOverDialogTest extends Specification {
     GameOverDialog.winMessage() == 'Level completed, well done!'
   }
 
-  def 'lose state offers retry and skip options'() {
+  def 'lose state offers retry and skip when track completed'() {
+    expect:
+    GameOverDialog.loseOptions(true) == ['Retry', 'Skip']
+  }
+
+  def 'lose state offers only retry when track not completed'() {
+    expect:
+    GameOverDialog.loseOptions(false) == ['Retry']
+  }
+
+  def 'lose state defaults to retry and skip with no argument'() {
     expect:
     GameOverDialog.loseOptions() == ['Retry', 'Skip']
   }

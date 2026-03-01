@@ -7,6 +7,8 @@ import se.alipsa.games.sc.core.FlowDirection
 import se.alipsa.games.sc.core.Position
 import se.alipsa.games.sc.core.SpecialPieceType
 
+import java.nio.file.Path
+
 class Track {
   final String id
   final String name
@@ -22,6 +24,7 @@ class Track {
   final List<String> boardMask
   final Map<Position, FlowDirection> oneWayTiles
   final Map<Position, Position> teleporters
+  Path sourcePath
 
   Track(String id,
         String name,

@@ -65,7 +65,9 @@ class TrackLoader {
         return
       }
 
-      candidates << new TrackCandidate(file, Track.fromMap(rawTrack))
+      Track track = Track.fromMap(rawTrack)
+      track.sourcePath = file
+      candidates << new TrackCandidate(file, track)
     }
 
     candidates.sort(candidateComparator())

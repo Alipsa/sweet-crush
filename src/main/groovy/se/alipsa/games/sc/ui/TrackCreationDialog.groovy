@@ -3,6 +3,7 @@ package se.alipsa.games.sc.ui
 import groovy.json.JsonOutput
 import se.alipsa.games.sc.core.CandyType
 import se.alipsa.games.sc.core.SpecialPieceType
+import se.alipsa.games.sc.model.Track
 
 import javax.swing.BorderFactory
 import javax.swing.BoxLayout
@@ -14,8 +15,11 @@ import javax.swing.JPanel
 import javax.swing.JSpinner
 import javax.swing.JTextField
 import javax.swing.SpinnerNumberModel
+import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
+import java.awt.FlowLayout
+import java.awt.GridLayout
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.regex.Pattern
@@ -103,6 +107,82 @@ class TrackCreationDialog {
             'Create Track Failed',
             JOptionPane.ERROR_MESSAGE)
       }
+    }
+  }
+
+  Optional<CreatedTrack> showAndEdit(Component parent, Track track, Path file) {
+    populateFromTrack(track)
+    String editId = track.id
+
+    while (true) {
+      int result = JOptionPane.showConfirmDialog(
+          parent,
+          buildPanel(),
+          'Edit Track',
+          JOptionPane.OK_CANCEL_OPTION,
+          JOptionPane.PLAIN_MESSAGE
+      )
+      if (result != JOptionPane.OK_OPTION) {
+        return Optional.empty()
+      }
+
+      String name = nameField.text?.trim()
+      if (!name) {
+        JOptionPane.showMessageDialog(parent, 'Name is required', 'Invalid Track', JOptionPane.WARNING_MESSAGE)
+        continue
+      }
+
+      List<CandyType> selectedScoreColors = scoreColorChecks.findAll { it.value.selected }.keySet().toList().sort { it.name() }
+      if (selectedScoreColors.isEmpty()) {
+        JOptionPane.showMessageDialog(parent, 'Select at least one scoring color', 'Invalid Track', JOptionPane.WARNING_MESSAGE)
+        continue
+      }
+
+      Map<String, Object> jsonTrack = [
+          id          : editId,
+          name        : name,
+          width       : spinnerValue(widthSpinner),
+          height      : spinnerValue(heightSpinner),
+          moves       : spinnerValue(movesSpinner),
+          targetScore : spinnerValue(targetScoreSpinner),
+          scoreColors : selectedScoreColors*.name(),
+          spawnWeights: spawnWeightSpinners.collectEntries { CandyType type, JSpinner spinner ->
+            [(type.name()): spinnerValue(spinner)]
+          },
+          specialPieces: specialPieceSpinners.collectEntries { SpecialPieceType type, JSpinner spinner ->
+            [(type.name()): spinnerValue(spinner)]
+          }
+      ]
+
+      try {
+        Files.writeString(file, JsonOutput.prettyPrint(JsonOutput.toJson(jsonTrack)))
+        return Optional.of(new CreatedTrack(editId, file))
+      } catch (Exception e) {
+        JOptionPane.showMessageDialog(parent,
+            "Failed to write track file: ${e.message}",
+            'Edit Track Failed',
+            JOptionPane.ERROR_MESSAGE)
+      }
+    }
+  }
+
+  private void populateFromTrack(Track track) {
+    nameField.text = track.name ?: ''
+    idPreviewLabel.text = track.id ?: ''
+    widthSpinner.value = track.width
+    heightSpinner.value = track.height
+    movesSpinner.value = track.moves
+    targetScoreSpinner.value = track.targetScore
+
+    CandyType.values().each { CandyType type ->
+      int weight = track.spawnWeights?.getOrDefault(type, 1) ?: 1
+      spawnWeightSpinners[type]?.value = Math.max(1, Math.min(5, weight))
+      scoreColorChecks[type]?.selected = track.scoreColors?.contains(type)
+    }
+
+    SpecialPieceType.values().each { SpecialPieceType type ->
+      int count = track.specialPieces?.getOrDefault(type, 0) ?: 0
+      specialPieceSpinners[type]?.value = Math.max(0, count)
     }
   }
 
@@ -200,45 +280,80 @@ class TrackCreationDialog {
     })
   }
 
-  private JPanel buildPanel() {
+  private JComponent buildPanel() {
     JPanel panel = new JPanel()
     panel.layout = new BoxLayout(panel, BoxLayout.Y_AXIS)
     panel.border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
-    panel.preferredSize = new Dimension(540, 640)
+    panel.preferredSize = new Dimension(720, 520)
 
     panel.add(row('Name', nameField))
     panel.add(row('Id (auto)', idPreviewLabel))
 
-    panel.add(row('Width', widthSpinner))
-    panel.add(row('Height', heightSpinner))
-    panel.add(row('Moves', movesSpinner))
-    panel.add(row('Target score', targetScoreSpinner))
+    // Basic settings: two per row
+    panel.add(doubleRow('Width', widthSpinner, 'Height', heightSpinner))
+    panel.add(doubleRow('Moves', movesSpinner, 'Target score', targetScoreSpinner))
 
-    panel.add(sectionLabel('Spawn Weights (1..5)'))
+    // Candy colors: weight spinner + score checkbox on one row per type
+    panel.add(sectionLabel('Candy Colors — Weight (1..5) / Scores'))
     CandyType.values().each { CandyType type ->
-      panel.add(row(type.name(), spawnWeightSpinners[type]))
+      panel.add(candyRow(type.name(), spawnWeightSpinners[type], scoreColorChecks[type]))
     }
 
-    panel.add(sectionLabel('Score Colors'))
-    CandyType.values().each { CandyType type ->
-      panel.add(row(type.name(), scoreColorChecks[type]))
-    }
-
+    // Special pieces: two per row
     panel.add(sectionLabel('Special Pieces (default 0)'))
-    SpecialPieceType.values().each { SpecialPieceType type ->
-      panel.add(row(type.name(), specialPieceSpinners[type]))
+    List<SpecialPieceType> specials = SpecialPieceType.values().toList()
+    for (int i = 0; i < specials.size(); i += 2) {
+      if (i + 1 < specials.size()) {
+        panel.add(doubleRow(specials[i].name(), specialPieceSpinners[specials[i]],
+            specials[i + 1].name(), specialPieceSpinners[specials[i + 1]]))
+      } else {
+        panel.add(row(specials[i].name(), specialPieceSpinners[specials[i]]))
+      }
     }
 
     panel
   }
 
   private static JPanel row(String label, JComponent component) {
-    JPanel row = new JPanel(new java.awt.BorderLayout(8, 0))
+    JPanel row = new JPanel(new BorderLayout(8, 0))
     row.border = BorderFactory.createEmptyBorder(2, 0, 2, 0)
     JLabel jLabel = new JLabel(label)
-    jLabel.preferredSize = new Dimension(180, 24)
-    row.add(jLabel, java.awt.BorderLayout.WEST)
-    row.add(component, java.awt.BorderLayout.CENTER)
+    jLabel.preferredSize = new Dimension(120, 24)
+    row.add(jLabel, BorderLayout.WEST)
+    row.add(component, BorderLayout.CENTER)
+    row
+  }
+
+  private static JPanel doubleRow(String leftLabel, JComponent leftComponent,
+                                   String rightLabel, JComponent rightComponent) {
+    JPanel row = new JPanel(new GridLayout(1, 2, 16, 0))
+    row.border = BorderFactory.createEmptyBorder(2, 0, 2, 0)
+    row.add(labeledField(leftLabel, leftComponent))
+    row.add(labeledField(rightLabel, rightComponent))
+    row
+  }
+
+  private static JPanel labeledField(String label, JComponent component) {
+    JPanel field = new JPanel(new BorderLayout(8, 0))
+    JLabel jLabel = new JLabel(label)
+    jLabel.preferredSize = new Dimension(100, 24)
+    field.add(jLabel, BorderLayout.WEST)
+    field.add(component, BorderLayout.CENTER)
+    field
+  }
+
+  private static JPanel candyRow(String typeName, JSpinner weightSpinner, JCheckBox scoreCheck) {
+    JPanel row = new JPanel(new BorderLayout(8, 0))
+    row.border = BorderFactory.createEmptyBorder(2, 0, 2, 0)
+    JLabel jLabel = new JLabel(typeName)
+    jLabel.preferredSize = new Dimension(120, 24)
+    row.add(jLabel, BorderLayout.WEST)
+
+    JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0))
+    controls.add(new JLabel('Weight:'))
+    controls.add(weightSpinner)
+    controls.add(scoreCheck)
+    row.add(controls, BorderLayout.CENTER)
     row
   }
 

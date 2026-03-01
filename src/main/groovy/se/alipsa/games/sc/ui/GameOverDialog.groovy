@@ -23,8 +23,8 @@ class GameOverDialog {
     'Moves exhausted. What would you like to do?'
   }
 
-  static List<String> loseOptions() {
-    ['Retry', 'Skip']
+  static List<String> loseOptions(boolean trackCompleted = true) {
+    trackCompleted ? ['Retry', 'Skip'] : ['Retry']
   }
 
   static Action determineWinAction(int currentTrackIndex, int totalTracks) {
@@ -41,12 +41,12 @@ class GameOverDialog {
     return determineWinAction(currentTrackIndex, totalTracks)
   }
 
-  Action showForLose(Component parent) {
+  Action showForLose(Component parent, boolean trackCompleted = true) {
     if (GraphicsEnvironment.isHeadless()) {
       return Action.RETRY
     }
 
-    List<String> options = loseOptions()
+    List<String> options = loseOptions(trackCompleted)
     int choice = JOptionPane.showOptionDialog(
         parent,
         loseMessage(),
@@ -58,6 +58,9 @@ class GameOverDialog {
         options[0]
     )
 
-    return choice == 1 ? Action.SKIP : Action.RETRY
+    if (trackCompleted) {
+      return choice == 1 ? Action.SKIP : Action.RETRY
+    }
+    return Action.RETRY
   }
 }

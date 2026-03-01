@@ -225,11 +225,11 @@ This section is the implementation plan for:
 7. Difficulty tuning by telemetry (auto-adjust score/moves by fail rate)
 
 ### M9 
-- Store last used track directory in user preferences and auto-load on startup.
-- Add a Edit track button that opens the current track in the same dialog as the create track editor dialog.
-- increase fornt size for score and moves left labels and data for better readability.
-- If a track in not completed, the only option should be to retry, not skip. Skip should only be offered after a track has been completed at least once.
-- brown and yellow have the same icon. THe sword should be on yellow. And the smokey white where the sword used to be should have a cloud icon. 
+- [x] Store last used track directory in user preferences (using the preference api) and auto-load on startup.
+- [x] Add a Edit track button that opens the current track in the same dialog as the create track editor dialog.
+- [x] increase font size for score and moves left labels and data for better readability.
+- [x] If a track in not completed, the only option should be to retry, not skip. Skip should only be offered after a track has been completed at least once.
+- [x] brown and yellow have the same icon. THe sword should be on yellow. And the smokey white where the sword used to be should have a cloud icon.
 
 #### JSON Schema Changes (Track Schema v2 + Campaign Schema v1)
 

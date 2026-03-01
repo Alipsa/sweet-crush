@@ -35,8 +35,9 @@ class ControlPanel extends JPanel {
   private final JButton restartButton = new JButton('Restart')
   private final JButton hintButton = new JButton('Hint')
   private final JButton boardDebugButton = new JButton('Log Board States')
-  private final Font baseLabelFont = scoreLabel.font.deriveFont(Font.BOLD)
-  private final Font emphasizedLabelFont = baseLabelFont.deriveFont((baseLabelFont.size2D + 2.0f) as float)
+  private final Font baseLabelFont = scoreLabel.font.deriveFont(Font.BOLD, 18f)
+  private final Font dataFont = scoreLabel.font.deriveFont(Font.BOLD, 24f)
+  private final Font emphasizedLabelFont = dataFont.deriveFont((dataFont.size2D + 4.0f) as float)
   private String currentGoalText = 'Choose a track to start'
   private int currentScore = 0
   private Map<SpecialPieceType, Integer> currentSpecials = [:]
@@ -182,7 +183,7 @@ class ControlPanel extends JPanel {
   }
 
   boolean isScoreEmphasized() {
-    scoreLabel.font.size > baseLabelFont.size
+    scoreLabel.font.size > dataFont.size
   }
 
   boolean isSpecialsEmphasized() {
@@ -299,7 +300,7 @@ class ControlPanel extends JPanel {
   }
 
   private void setScoreEmphasis(boolean emphasized) {
-    scoreLabel.font = emphasized ? emphasizedLabelFont : baseLabelFont
+    scoreLabel.font = emphasized ? emphasizedLabelFont : dataFont
   }
 
   private void setSpecialsEmphasis(boolean emphasized) {
@@ -315,8 +316,8 @@ class ControlPanel extends JPanel {
     goalLabel.font = font
     objectivesHeaderLabel.font = font
     objectivesLabel.font = font
-    scoreLabel.font = font
-    movesLabel.font = font
+    scoreLabel.font = dataFont
+    movesLabel.font = dataFont
     specialsHeaderLabel.font = font
     sweeperLabel.font = font
     smallBombLabel.font = font

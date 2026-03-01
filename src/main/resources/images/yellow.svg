@@ -1,7 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
   <circle cx="48" cy="48" r="42" fill="#E6C65A"/>
   <circle cx="48" cy="48" r="42" fill="none" stroke="#C7A742" stroke-width="3"/>
-  <polygon points="19,62 41,32 56,62" fill="#FFF8DB"/>
-  <polygon points="38,62 58,27 77,62" fill="#FFF0C2"/>
-  <path d="M19 62H77" stroke="#F7DEA0" stroke-width="4" stroke-linecap="round"/>
+  <!-- blade -->
+  <polygon points="46,18 50,18 52,52 44,52" fill="#A8903A"/>
+  <!-- blade tip -->
+  <polygon points="46,18 50,18 48,12" fill="#9A8232"/>
+  <!-- crossguard -->
+  <rect x="35" y="52" width="26" height="5" rx="2" fill="#8C7A2E"/>
+  <!-- grip -->
+  <rect x="46" y="57" width="4" height="14" rx="1" fill="#B89E48"/>
+  <!-- pommel -->
+  <ellipse cx="48" cy="73" rx="4" ry="3" fill="#8C7A2E"/>
 </svg>

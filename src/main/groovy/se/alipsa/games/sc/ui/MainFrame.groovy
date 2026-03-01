@@ -43,6 +43,7 @@ class MainFrame extends JFrame {
 
   private static final Logger log = LogManager.getLogger(MainFrame)
   private static final String PREF_LAST_TRACK_DIR = 'lastTrackDirectory'
+  private static final String PREF_COMPLETED_TRACKS = 'completedTracks'
   private static final Color APP_BACKGROUND = new Color(0x2C2C2C)
   private static final Color PANEL_BACKGROUND = new Color(0x343434)
   private static final Color LIST_BACKGROUND = PANEL_BACKGROUND
@@ -59,6 +60,7 @@ class MainFrame extends JFrame {
   private final JList<String> trackList = new JList<>(trackListModel)
   private final JButton chooseTrackFolderButton = new JButton('Choose Track Folder')
   private final JButton createTrackButton = new JButton('Create Track')
+  private final JButton editTrackButton = new JButton('Edit Track')
 
   private ExecutorService gameWorker
   private GameEngine gameEngine
@@ -277,6 +279,39 @@ class MainFrame extends JFrame {
     return null
   }
 
+  private void markTrackCompleted(String trackId) {
+    if (!trackId) {
+      return
+    }
+    try {
+      Set<String> completed = loadCompletedTrackIds()
+      completed.add(trackId)
+      preferences.put(PREF_COMPLETED_TRACKS, completed.join(','))
+    } catch (SecurityException e) {
+      log.debug('Unable to persist completed tracks: {}', e.message)
+    }
+  }
+
+  private boolean isTrackCompleted(String trackId) {
+    if (!trackId) {
+      return false
+    }
+    return loadCompletedTrackIds().contains(trackId)
+  }
+
+  private Set<String> loadCompletedTrackIds() {
+    try {
+      String value = preferences.get(PREF_COMPLETED_TRACKS, '')
+      if (!value) {
+        return new LinkedHashSet<>()
+      }
+      return new LinkedHashSet<>(value.split(',').collect { it.trim() }.findAll { it })
+    } catch (Exception e) {
+      log.debug('Unable to read completed tracks preference: {}', e.message)
+      return new LinkedHashSet<>()
+    }
+  }
+
   private void applyAppIcon() {
     InputStream iconStream = MainFrame.class.getResourceAsStream('/images/app-icon.png')
     if (iconStream == null) {
@@ -335,13 +370,16 @@ class MainFrame extends JFrame {
     panel.add(trackScroll, BorderLayout.CENTER)
     chooseTrackFolderButton.addActionListener { chooseTrackFolder() }
     createTrackButton.addActionListener { createTrackInCurrentDirectory() }
+    editTrackButton.addActionListener { editCurrentTrack() }
 
-    JPanel actions = new JPanel(new GridLayout(1, 2, 6, 0))
+    JPanel actions = new JPanel(new GridLayout(1, 3, 6, 0))
     actions.background = PANEL_BACKGROUND
     styleTrackActionButton(chooseTrackFolderButton)
     styleTrackActionButton(createTrackButton)
+    styleTrackActionButton(editTrackButton)
     actions.add(chooseTrackFolderButton)
     actions.add(createTrackButton)
+    actions.add(editTrackButton)
 
     panel.add(actions, BorderLayout.SOUTH)
     panel
@@ -379,6 +417,46 @@ class MainFrame extends JFrame {
     Track createdTrack = currentLoadResult.tracks.find { Track t -> t.id == created.get().id } as Track
     if (createdTrack != null) {
       startTrack(createdTrack)
+    }
+  }
+
+  private void editCurrentTrack() {
+    if (currentTrackIndex < 0 || currentTrackIndex >= currentLoadResult.tracks.size()) {
+      JOptionPane.showMessageDialog(
+          this,
+          'Select a track to edit first.',
+          'No Track Selected',
+          JOptionPane.INFORMATION_MESSAGE
+      )
+      return
+    }
+
+    Track track = currentLoadResult.tracks[currentTrackIndex] as Track
+    Path file = track.sourcePath
+    if (file == null || !Files.isRegularFile(file)) {
+      JOptionPane.showMessageDialog(
+          this,
+          'Cannot determine the source file for this track.',
+          'Edit Track',
+          JOptionPane.WARNING_MESSAGE
+      )
+      return
+    }
+
+    Path directory = file.parent
+    Set<String> existingIds = loadExistingTrackIds(directory)
+    TrackCreationDialog dialog = new TrackCreationDialog(directory, existingIds)
+    Optional<TrackCreationDialog.CreatedTrack> edited = dialog.showAndEdit(this, track, file)
+    if (!edited.present) {
+      return
+    }
+
+    log.info('Edited track {} at {}', edited.get().id, edited.get().file)
+    String editedId = edited.get().id
+    loadTrackDirectory(directory)
+    Track reloadedTrack = currentLoadResult.tracks.find { Track t -> t.id == editedId } as Track
+    if (reloadedTrack != null) {
+      startTrack(reloadedTrack)
     }
   }
 
@@ -523,7 +601,9 @@ class MainFrame extends JFrame {
     @Override
     void onGameOver(GameOutcome outcome, int finalScore, int movesLeft) {
       SwingUtilities.invokeLater {
+        Track currentTrack = currentLoadResult.tracks[currentTrackIndex] as Track
         if (outcome == GameOutcome.WIN) {
+          markTrackCompleted(currentTrack.id)
           GameOverDialog.Action action = gameOverDialog.showForWin(MainFrame.this,
               currentTrackIndex,
               currentLoadResult.tracks.size())
@@ -537,7 +617,8 @@ class MainFrame extends JFrame {
             }
           }
         } else {
-          GameOverDialog.Action action = gameOverDialog.showForLose(MainFrame.this)
+          boolean completed = isTrackCompleted(currentTrack.id)
+          GameOverDialog.Action action = gameOverDialog.showForLose(MainFrame.this, completed)
           if (action == GameOverDialog.Action.RETRY) {
             restartCurrentTrack()
           } else {
