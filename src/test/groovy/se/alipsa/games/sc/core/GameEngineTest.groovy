@@ -1,6 +1,8 @@
 package se.alipsa.games.sc.core
 
 import se.alipsa.games.sc.model.Track
+import se.alipsa.games.sc.model.Objective
+import se.alipsa.games.sc.model.ObjectiveType
 import spock.lang.Specification
 
 import java.util.concurrent.ExecutorService
@@ -221,6 +223,61 @@ class GameEngineTest extends Specification {
     countChangedCells(before, after) >= 5
   }
 
+  def 'wins only when all configured objectives are completed'() {
+    given:
+    worker = Executors.newSingleThreadExecutor()
+    StubBoardResolver resolver = new StubBoardResolver(
+        legalSwapBoard(),
+        [5],
+        [[(CandyType.RED): 2, (CandyType.BLUE): 3]],
+        [(BlockerType.JELLY): 1]
+    )
+    List<Objective> objectives = [
+        new Objective(ObjectiveType.SCORE, 50, null, null),
+        new Objective(ObjectiveType.COLLECT_COLOR, 2, CandyType.RED, null),
+        new Objective(ObjectiveType.CLEAR_BLOCKER, 1, null, BlockerType.JELLY)
+    ]
+    Track objectiveTrack = track(3, 3, 5, 9999, null, null, objectives)
+    RecordingListener listener = new RecordingListener()
+    GameEngine engine = new GameEngine(objectiveTrack, resolver, new MatchFinder(), worker, listener)
+
+    when:
+    boolean success = engine.submitSwap(0, 1, 1, 1).get(2, TimeUnit.SECONDS)
+
+    then:
+    success
+    engine.gameOver
+    listener.outcomes == [GameOutcome.WIN]
+    engine.objectiveProgress.every { it.complete }
+  }
+
+  def 'does not win when one objective remains incomplete'() {
+    given:
+    worker = Executors.newSingleThreadExecutor()
+    StubBoardResolver resolver = new StubBoardResolver(
+        legalSwapBoard(),
+        [5],
+        [[(CandyType.BLUE): 5]],
+        [:]
+    )
+    List<Objective> objectives = [
+        new Objective(ObjectiveType.SCORE, 50, null, null),
+        new Objective(ObjectiveType.COLLECT_COLOR, 2, CandyType.RED, null)
+    ]
+    Track objectiveTrack = track(3, 3, 5, 9999, null, null, objectives)
+    RecordingListener listener = new RecordingListener()
+    GameEngine engine = new GameEngine(objectiveTrack, resolver, new MatchFinder(), worker, listener)
+
+    when:
+    boolean success = engine.submitSwap(0, 1, 1, 1).get(2, TimeUnit.SECONDS)
+
+    then:
+    success
+    !engine.gameOver
+    listener.outcomes.isEmpty()
+    !engine.objectiveProgress.find { it.objective.type == ObjectiveType.COLLECT_COLOR }.complete
+  }
+
   private static Board legalSwapBoard() {
     Board board = new Board(3, 3)
 
@@ -330,8 +387,9 @@ class GameEngineTest extends Specification {
                              int moves,
                              int targetScore,
                              Set<CandyType> scoreColors = null,
-                             Map<SpecialPieceType, Integer> specialPieces = null) {
-    new Track('t', 't', width, height, moves, targetScore, uniformWeights(), scoreColors, specialPieces)
+                             Map<SpecialPieceType, Integer> specialPieces = null,
+                             List<Objective> objectives = null) {
+    new Track('t', 't', width, height, moves, targetScore, uniformWeights(), scoreColors, specialPieces, null, objectives)
   }
 
   private static int countChangedCells(Board before, Board after) {
@@ -358,16 +416,19 @@ class GameEngineTest extends Specification {
     private final Board initialBoard
     private final List<Integer> groupSizes
     private final List<Map<CandyType, Integer>> groupCandyCounts
+    private final Map<BlockerType, Integer> clearedBlockers
     Set<Position> lastForcedActivations = [] as Set<Position>
     BoardResolver.SpecialSwapCombo lastSpecialSwapCombo
 
     StubBoardResolver(Board initialBoard,
-                     List<Integer> groupSizes,
-                     List<Map<CandyType, Integer>> groupCandyCounts = []) {
+                      List<Integer> groupSizes,
+                      List<Map<CandyType, Integer>> groupCandyCounts = [],
+                      Map<BlockerType, Integer> clearedBlockers = [:]) {
       super(new Random(1L), new MatchFinder(), new GravityRefill())
       this.initialBoard = initialBoard
       this.groupSizes = groupSizes
       this.groupCandyCounts = groupCandyCounts
+      this.clearedBlockers = clearedBlockers
     }
 
     @Override
@@ -377,7 +438,7 @@ class GameEngineTest extends Specification {
 
     @Override
     CascadeResult resolve(Board board, Map<CandyType, Integer> spawnWeights, GameListener listener = null) {
-      new CascadeResult(groupSizes, groupCandyCounts)
+      new CascadeResult(groupSizes, groupCandyCounts, clearedBlockers)
     }
 
     @Override
@@ -389,7 +450,7 @@ class GameEngineTest extends Specification {
                           GameListener listener = null) {
       lastForcedActivations = new LinkedHashSet<>(forcedActivations ?: [])
       lastSpecialSwapCombo = specialSwapCombo
-      new CascadeResult(groupSizes, groupCandyCounts)
+      new CascadeResult(groupSizes, groupCandyCounts, clearedBlockers)
     }
   }
 

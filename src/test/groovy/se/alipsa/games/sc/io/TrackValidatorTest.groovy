@@ -198,6 +198,166 @@ class TrackValidatorTest extends Specification {
     validator.validate(TEST_FILE, wrongType).any { it.code == LoadErrorCode.INVALID_SPECIAL_PIECES }
   }
 
+  def 'accepts valid blockers and objectives configuration'() {
+    given:
+    Map<String, Object> rawTrack = validTrack()
+    rawTrack.blockers = [
+        [x: 1, y: 1, type: 'JELLY', layers: 2],
+        [x: 3, y: 2, type: 'CRATE', layers: 1]
+    ]
+    rawTrack.objectives = [
+        [type: 'SCORE', target: 1200],
+        [type: 'CLEAR_BLOCKER', target: 2],
+        [type: 'COLLECT_COLOR', target: 6, color: 'RED']
+    ]
+
+    expect:
+    validator.validate(TEST_FILE, rawTrack).isEmpty()
+  }
+
+  def 'accepts valid board mask configuration'() {
+    given:
+    Map<String, Object> rawTrack = validTrack()
+    rawTrack.board = [
+        mask: [
+            '...#...',
+            '..###..',
+            '.......',
+            '...#...',
+            '...#...',
+            '..###..',
+            '...#...',
+            '...#...',
+            '.......'
+        ]
+    ]
+
+    expect:
+    validator.validate(TEST_FILE, rawTrack).isEmpty()
+  }
+
+  def 'rejects invalid board mask configuration'() {
+    given:
+    Map<String, Object> rawTrack = validTrack()
+    rawTrack.board = [
+        mask: [
+            '...#..X',
+            '....',
+            '....',
+            '....',
+            '....',
+            '....',
+            '....',
+            '....',
+            '....'
+        ]
+    ]
+
+    when:
+    List<LoadError> errors = validator.validate(TEST_FILE, rawTrack)
+
+    then:
+    errors.any { it.code == LoadErrorCode.INVALID_DIMENSIONS && it.message.contains('board.mask') }
+  }
+
+  def 'accepts valid one-way and teleporter geometry configuration'() {
+    given:
+    Map<String, Object> rawTrack = validTrack()
+    rawTrack.board = [
+        oneWay    : [
+            [x: 1, y: 1, direction: 'LEFT'],
+            [x: 4, y: 4, direction: 'DOWN']
+        ],
+        teleporters: [
+            [from: [x: 0, y: 0], to: [x: 6, y: 8]],
+            [from: [x: 6, y: 0], to: [x: 0, y: 8]]
+        ]
+    ]
+
+    expect:
+    validator.validate(TEST_FILE, rawTrack).isEmpty()
+  }
+
+  def 'rejects invalid one-way and teleporter geometry configuration'() {
+    given:
+    Map<String, Object> rawTrack = validTrack()
+    rawTrack.board = [
+        oneWay    : [
+            [x: 1, y: 1, direction: 'SIDEWAYS']
+        ],
+        teleporters: [
+            [from: [x: 0, y: 0], to: [x: 6, y: 8]],
+            [from: [x: 0, y: 0], to: [x: 5, y: 8]]
+        ]
+    ]
+
+    when:
+    List<LoadError> errors = validator.validate(TEST_FILE, rawTrack)
+
+    then:
+    errors.any { it.code == LoadErrorCode.INVALID_BOARD_GEOMETRY && it.message.contains('Unknown board.oneWay direction') }
+    errors.any { it.code == LoadErrorCode.INVALID_BOARD_GEOMETRY && it.message.contains('Duplicate board.teleporters source') }
+  }
+
+  def 'rejects invalid blockers configuration'() {
+    given:
+    Map<String, Object> rawTrack = validTrack()
+    rawTrack.blockers = [
+        [x: 1, y: 1, type: 'UNKNOWN', layers: 2],
+        [x: 1, y: 1, type: 'JELLY', layers: 4],
+        [x: 999, y: 0, type: 'ICE', layers: 1]
+    ]
+
+    when:
+    List<LoadError> errors = validator.validate(TEST_FILE, rawTrack)
+
+    then:
+    errors.any { it.code == LoadErrorCode.INVALID_BLOCKERS }
+  }
+
+  def 'rejects blocker placement on hole mask cells'() {
+    given:
+    Map<String, Object> rawTrack = validTrack()
+    rawTrack.board = [
+        mask: [
+            '.......',
+            '...#...',
+            '.......',
+            '.......',
+            '.......',
+            '.......',
+            '.......',
+            '.......',
+            '.......'
+        ]
+    ]
+    rawTrack.blockers = [
+        [x: 3, y: 1, type: 'JELLY', layers: 1]
+    ]
+
+    when:
+    List<LoadError> errors = validator.validate(TEST_FILE, rawTrack)
+
+    then:
+    errors.any { it.code == LoadErrorCode.INVALID_BLOCKERS && it.message.contains('hole cell') }
+  }
+
+  def 'rejects invalid objectives configuration'() {
+    given:
+    Map<String, Object> rawTrack = validTrack()
+    rawTrack.objectives = [
+        [type: 'UNKNOWN', target: 5],
+        [type: 'COLLECT_COLOR', target: 4],
+        [type: 'CLEAR_BLOCKER', target: 3, blockerType: 'MISSING']
+    ]
+
+    when:
+    List<LoadError> errors = validator.validate(TEST_FILE, rawTrack)
+
+    then:
+    errors.any { it.code == LoadErrorCode.INVALID_OBJECTIVES }
+  }
+
   private static Map<String, Object> validTrack() {
     [
         id          : 'classic-01',

@@ -19,6 +19,35 @@ class BoardResolverTest extends Specification {
     resolver.hasLegalSwap(board)
   }
 
+  def 'initial fill respects hole mask and keeps hole cells empty'() {
+    given:
+    BoardResolver resolver = new BoardResolver(new Random(12346L))
+    MatchFinder finder = new MatchFinder()
+    List<String> mask = [
+        '...#...',
+        '..###..',
+        '.......',
+        '...#...',
+        '...#...',
+        '..###..',
+        '.......',
+        '.......',
+        '...#...'
+    ]
+    Track track = track('masked-init', 7, 9, 25, 3000, uniformWeights(), mask)
+
+    when:
+    Board board = resolver.createInitialBoard(track)
+
+    then:
+    finder.findMatchGroups(board).isEmpty()
+    resolver.hasLegalSwap(board)
+    !board.isPlayable(3, 0)
+    board.getPiece(3, 0) == null
+    !board.isPlayable(3, 1)
+    board.getPiece(3, 1) == null
+  }
+
   def 'resolve performs clear, gravity and refill and stabilizes board'() {
     given:
     BoardResolver resolver = new BoardResolver(new Random(99L))
@@ -433,13 +462,51 @@ class BoardResolverTest extends Specification {
     listener.specialActivations.count { it.type == SpecialPieceType.BOMB } == 2
   }
 
+  def 'clear effects damage blocker layers and keep blocker until last layer is removed'() {
+    given:
+    BoardResolver resolver = new BoardResolver(new Random(901L))
+    Board board = boardOf([
+        [CandyType.RED, CandyType.RED, CandyType.RED],
+        [CandyType.BLUE, CandyType.GREEN, CandyType.YELLOW],
+        [CandyType.ORANGE, CandyType.PURPLE, CandyType.BLUE]
+    ])
+    board.setBlocker(1, 0, new Blocker(BlockerType.JELLY, 2))
+
+    when:
+    BoardResolver.CascadeResult result = resolver.resolve(board, uniformWeights())
+
+    then:
+    board.getBlocker(1, 0) != null
+    board.getBlocker(1, 0).layers == 1
+    !result.clearedBlockers.containsKey(BlockerType.JELLY)
+  }
+
+  def 'reports cleared blocker count when final blocker layer is removed'() {
+    given:
+    BoardResolver resolver = new BoardResolver(new Random(902L))
+    Board board = boardOf([
+        [CandyType.RED, CandyType.RED, CandyType.RED],
+        [CandyType.BLUE, CandyType.GREEN, CandyType.YELLOW],
+        [CandyType.ORANGE, CandyType.PURPLE, CandyType.BLUE]
+    ])
+    board.setBlocker(1, 0, new Blocker(BlockerType.CRATE, 1))
+
+    when:
+    BoardResolver.CascadeResult result = resolver.resolve(board, uniformWeights())
+
+    then:
+    board.getBlocker(1, 0) == null
+    result.clearedBlockers.getOrDefault(BlockerType.CRATE, 0) >= 1
+  }
+
   private static Track track(String id,
                              int width,
                              int height,
                              int moves,
                              int targetScore,
-                             Map<CandyType, Integer> weights) {
-    new Track(id, id, width, height, moves, targetScore, weights)
+                             Map<CandyType, Integer> weights,
+                             List<String> boardMask = null) {
+    new Track(id, id, width, height, moves, targetScore, weights, null, null, null, null, boardMask)
   }
 
   private static Map<CandyType, Integer> uniformWeights() {

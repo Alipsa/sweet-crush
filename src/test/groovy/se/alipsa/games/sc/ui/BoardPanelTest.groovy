@@ -54,6 +54,30 @@ class BoardPanelTest extends Specification {
     cell == new Position(1, 2)
   }
 
+  def 'returns null for mouse coordinates targeting hole cells'() {
+    given:
+    boolean[][] mask = [
+        [true, true, true] as boolean[],
+        [true, false, true] as boolean[],
+        [true, true, true] as boolean[]
+    ] as boolean[][]
+    Board board = new Board(3, 3, mask)
+    board.setCell(0, 0, CandyType.RED)
+    board.setCell(2, 2, CandyType.BLUE)
+    GameSession engine = Stub(GameSession) {
+      snapshotBoard() >> board
+      isResolving() >> false
+    }
+    BoardPanel panel = new BoardPanel()
+    panel.setGame(track(3, 3), engine)
+
+    when:
+    Position holeCell = panel.toBoardCell(150, 150, 300, 300)
+
+    then:
+    holeCell == null
+  }
+
   def 'rejects move input while engine is resolving'() {
     given:
     Board board = boardOf(3, 3)

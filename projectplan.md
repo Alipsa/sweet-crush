@@ -213,6 +213,139 @@ Each track file is a single JSON object with the following fields:
 - [x] 42d. `GameEngine.groovy` + `BoardResolver.groovy` + core tests: implement special-vs-special combo swap rules (`SWEEPER`/`SMALL_BOMB`/`FISH`/`BOMB`) including least-promising fish targeting for specific combos, color-convert mass activations for `* + BOMB`, and full-board clear for `BOMB + BOMB`.
 - [x] 42e. `BoardResolver.groovy` + `GameListener.groovy` + `BoardPanel.groovy`: implement normal `BOMB` swap behavior to target the swapped candy color globally (clear all matching-color pieces), emit bomb-beam callbacks per target, and render beam feedback during transition animation.
 
+### M8+ — Advanced Modes Expansion Plan (Blockers, Geometry, Objectives, Ingredients, Spawners, Campaign, Telemetry)
+
+This section is the implementation plan for:
+1. Blockers/obstacles with 1-3 hit layers (`JELLY`, `CRATE`, `LICORICE`, `ICE`, `HONEY`)
+2. Board geometry (`HOLE`, one-way tiles, teleporters, split/irregular boards)
+3. Multi-objective levels (score + clear + collect combinations)
+4. Ingredient/drop mode (spawn cherries/nuts, drop to exits)
+5. Spawner tiles (spawn blockers/specials every N turns)
+6. Progression map (chapters/themes/unlocks)
+7. Difficulty tuning by telemetry (auto-adjust score/moves by fail rate)
+
+### M9 
+- Store last used track directory in user preferences and auto-load on startup.
+- Add a Edit track button that opens the current track in the same dialog as the create track editor dialog.
+- increase fornt size for score and moves left labels and data for better readability.
+- If a track in not completed, the only option should be to retry, not skip. Skip should only be offered after a track has been completed at least once.
+- brown and yellow have the same icon. THe sword should be on yellow. And the smokey white where the sword used to be should have a cloud icon. 
+
+#### JSON Schema Changes (Track Schema v2 + Campaign Schema v1)
+
+- [ ] 43. `Track` schema versioning and compatibility:
+  - Add `schemaVersion` (default `1` when omitted; new features require `2`).
+  - Keep all existing v1 fields backwards-compatible.
+- [x] 44. Add board topology and geometry fields to track JSON (M8b subset):
+  - `board.mask: String[]` with row-wise topology where `.` = playable cell and `#` = hole.
+  - `board.oneWay: [{x,y,direction}]` where direction is `UP|RIGHT|DOWN|LEFT`.
+  - `board.teleporters: [{id, from:{x,y}, to:{x,y}}]`.
+  - `board.spawnCells: [{x,y}]` and `board.exitCells: [{x,y}]` (used by ingredient/drop mode).
+- [x] 45. Add blockers config:
+  - `blockers: [{x,y,type,layers}]`.
+  - `type` in `JELLY|CRATE|LICORICE|ICE|HONEY`.
+  - `layers` constrained to `1..3`.
+- [x] 46. Add multi-objective config:
+  - `objectives: [{type,target,...}]`.
+  - M8a objective types: `SCORE`, `CLEAR_BLOCKER`, `COLLECT_COLOR` (`DROP_INGREDIENT` deferred to ingredient phase).
+  - `objectiveMode: "ALL"` for MVP (all objectives required to win).
+- [ ] 47. Add ingredient/drop mode config:
+  - `ingredients.enabled: boolean`.
+  - `ingredients.queue: [{type,count}]` where `type` in `CHERRY|NUT`.
+  - `ingredients.spawnEveryTurns: int >= 1`.
+  - Ingredient movement uses board gravity and teleport topology.
+- [ ] 48. Add spawner config:
+  - `spawners: [{x,y,everyTurns,maxActive,table}]`.
+  - `table: [{kind,type,layers,weight}]` where `kind` in `BLOCKER|SPECIAL`.
+- [ ] 49. Add telemetry-driven tuning policy per track:
+  - `difficultyTuning: {enabled,targetFailRate,minMoves,maxMoves,minTargetScore,maxTargetScore,adjustStepMoves,adjustStepScore}`.
+  - Track definitions remain deterministic; tuning applies at session start and is persisted separately.
+- [ ] 50. Add campaign schema file `tracks/campaign.json`:
+  - `campaignId`, `name`, `chapters`.
+  - Chapters contain ordered level IDs, theme metadata, and unlock conditions (`previousLevelWin`, optional star threshold).
+  - Optional per-level mechanic gates (which blockers/geometry/special systems are enabled).
+- [ ] 51. Add runtime persistence files (outside track JSON):
+  - `progress.json` for campaign unlock state and stars.
+  - `telemetry.jsonl` for anonymized local outcomes (track id, attempts, win/loss, moves used, score reached, timestamp).
+
+#### Engine and UI Tasks
+
+- [ ] 52. Core model refactor:
+  - Introduce `CellType`, `BlockerType`, `ObjectiveType`, `IngredientType`.
+  - Represent board as topology-aware grid (`playable`, `hole`, directional constraints, teleport links).
+- [x] 53. Resolver changes for blockers (M8a baseline):
+  - Resolve clear effects as damage events against blockers (decrement layers until removed).
+  - Baseline in M8a: all blocker types (`JELLY`, `CRATE`, `LICORICE`, `ICE`, `HONEY`) use layered-hit behavior.
+  - Type-specific advanced behaviors are deferred to a follow-up phase.
+- [x] 54. Geometry-aware gravity/pathing (M8b subset):
+  - Replace column-only gravity with mask-aware falling for hole/split layouts.
+  - Support split/irregular boards naturally through `board.mask`.
+  - Full graph/path one-way+teleporter pathing remains in M8c+.
+- [x] 55. Objective engine:
+  - Evaluate objective progress events (`onScore`, `onBlockerDamaged`, `onColorCollected`, `onIngredientDropped`).
+  - Win condition becomes `all objectives complete` (with score-only fallback for legacy tracks).
+- [ ] 56. Ingredient/drop engine:
+  - Spawn ingredient entities from configured source cells.
+  - Ingredients do not match; they fall/move until reaching exit cells.
+  - Resolve blocked exits and deadlock detection with reshuffle-safe handling.
+- [ ] 57. Spawner engine:
+  - Turn counter and per-spawner cadence.
+  - Spawn selection by weighted table with occupancy and `maxActive` guards.
+  - Prevent impossible states (no spawn target available -> skip and log).
+- [ ] 58. Campaign/progression engine:
+  - Add campaign service for chapter navigation, unlock rules, and star calculation.
+  - Persist progress on win and load on startup.
+- [ ] 59. Telemetry + auto-tuning engine:
+  - Record attempt outcomes locally.
+  - At level start, compute rolling fail rate and adjust `moves`/`targetScore` within per-track bounds.
+  - Use deterministic adjustment formula; always log applied adjustments.
+- [x] 60. UI changes (M8a subset):
+  - Left panel: multi-objective tracker with live per-objective progress.
+  - Board: blocker layer badges/overlays.
+  - Geometry-specific overlays, campaign map screen, and telemetry post-level summary are deferred.
+
+#### Test Matrix
+
+| Area             | Unit Tests                                              | Integration Tests                                 | UI Tests                                             | Property/Stress Tests                                                    |
+|------------------|---------------------------------------------------------|---------------------------------------------------|------------------------------------------------------|--------------------------------------------------------------------------|
+| Blockers         | layer decrement, remove rules, special-hit interactions | cascades with mixed blockers and specials         | blocker icon/layer rendering updates                 | randomized blocker layouts never produce invalid cell states             |
+| Geometry         | hole bounds, one-way legality, teleporter mapping       | full resolve on split/irregular boards            | arrows/teleporter overlays and selection constraints | gravity/path solver termination on random masks                          |
+| Multi-objective  | objective progress increments and completion logic      | score+clear+collect combined win conditions       | objective panel updates and win transition           | invariant: win only when all objectives complete                         |
+| Ingredient mode  | spawn cadence, exit detection, blocked exit logic       | ingredient drop with cascades/specials/teleports  | ingredient icon movement and counters                | no stuck ingredient without either valid move, reshuffle, or fail signal |
+| Spawners         | cadence and weighted spawn selection                    | long-run levels with repeated spawns              | spawner marker and spawn feedback                    | bounded active spawns and no infinite resolve loop                       |
+| Campaign map     | unlock condition evaluation, persistence I/O            | chapter progression and replay behavior           | map navigation and lock state visuals                | persistence corruption fallback and migration handling                   |
+| Telemetry tuning | rolling fail-rate computation and clamp bounds          | repeated attempts change start params as expected | adjustment disclosure in pre-level/post-level UI     | monotonic bounded adjustments under extreme win/loss streaks             |
+
+#### Phased Rollout (Quick Wins First)
+
+- [x] Phase 1 (Quick Wins): `M8a`
+  - Deliver blockers (`JELLY`, `CRATE`, `ICE`) with 1-3 layers.
+  - Deliver multi-objective engine with `SCORE`, `CLEAR_BLOCKER`, `COLLECT_COLOR`.
+  - Keep rectangular boards only in this phase.
+  - Exit criteria: stable playability, objective UI, full regression green.
+- [x] Phase 2: `M8b`
+  - Add irregular/split boards via `board.mask` and `HOLE`.
+  - Add geometry-aware gravity for masked boards.
+  - Exit criteria: no deadlocks introduced by holes/splits in soak tests.
+- [x] Phase 3: `M8c`
+  - Add one-way tiles and teleporters.
+  - Add board debug visualization and path diagnostics logging.
+  - Exit criteria: deterministic pathing and legal-swap validation on all geometry types.
+- [ ] Phase 4: `M8d`
+  - Add ingredient/drop mode (`CHERRY`, `NUT`) and exit cells.
+  - Add spawner tiles for blockers and specials.
+  - Exit criteria: ingredient and spawner interaction tests green with specials enabled.
+- [ ] Phase 5: `M8e`
+  - Add campaign map (`campaign.json`) with chapters, themes, unlock rules, and progress persistence.
+  - Exit criteria: complete chapter flow from locked start to unlock progression.
+- [ ] Phase 6: `M8f`
+  - Add telemetry capture and bounded auto-tuning (moves/target score).
+  - Add user-visible adjustment messaging and opt-out toggle in settings.
+  - Exit criteria: tuning changes are reproducible, bounded, and transparent.
+- [ ] Phase 7 (Polish/Balancing): `M8g`
+  - Content balancing pass, tutorial tooltips for new mechanics, and performance optimization.
+  - Exit criteria: target FPS/UI responsiveness maintained on HiDPI and standard displays.
+
 ## Task Dependencies
 - Tasks 1a/1b/1c/1d (pom.xml + log4j config) block everything — nothing compiles without them. Execute in order: 1a → 1b → 1c → 1d.
 - M1 ordering: 1a–1d → 2, 1a–1d → 4 → 8, 1a–1d → 5 → 5a → 8, 5a/6/7/8 → 9, 8 → 10, 9 → 11. Task 3 depends only on 1a–1d.
@@ -222,16 +355,24 @@ Each track file is a single JSON object with the following fields:
 - M6 depends on M4 completion (full docs and sample content finalized before packaging).
 - M7 depends on M2 completion (core resolver/engine in place), and on M3 for special rendering/UI feedback.
 - M7 suggested implementation order: 27 → 27a → 28 → 29/29a/30/31 → 32 → 33 → 34 → 35 → 38/39/40 → 36/41 → 37/42.
+- M8+ depends on M7 completion (special pipeline stable). Suggested execution order: Phase 1 blockers+multi-objective → Phase 2 mask/holes/split gravity → Phase 3 one-way+teleporters → Phase 4 ingredients+spawners → Phase 5 campaign map → Phase 6 telemetry auto-tuning → Phase 7 balancing.
 
 ## Milestone Gates
-- [ ] M1: Items 1a–11 complete (build works, log4j configured, `CandyType` defined, `LoadErrorCode` enum defined, load result/error types in place, track pack loading fully tested, minimal README in place). `mvn clean verify` passes, and there are zero compiler warnings from project sources (`src/main` + `src/test`).
-- [ ] M2: Items 12–18b complete (playable core loop with separated gravity/refill, engine/resolver/integration/threading-contract tests passing). `mvn clean verify` passes, and there are zero compiler warnings from project sources (`src/main` + `src/test`).
-- [ ] M3: Items 19–22l complete (desktop playable UI with win/lose/reshuffle-exhausted/empty-directory dialogs, UI component tests passing).
-- [ ] M4: Items 23–24 complete (sample content, full docs).
-- [ ] M5: Item 25 complete (candy art assets integrated into board rendering).
+- [X] M1: Items 1a–11 complete (build works, log4j configured, `CandyType` defined, `LoadErrorCode` enum defined, load result/error types in place, track pack loading fully tested, minimal README in place). `mvn clean verify` passes, and there are zero compiler warnings from project sources (`src/main` + `src/test`).
+- [X] M2: Items 12–18b complete (playable core loop with separated gravity/refill, engine/resolver/integration/threading-contract tests passing). `mvn clean verify` passes, and there are zero compiler warnings from project sources (`src/main` + `src/test`).
+- [X] M3: Items 19–22l complete (desktop playable UI with win/lose/reshuffle-exhausted/empty-directory dialogs, UI component tests passing).
+- [X] M4: Items 23–24 complete (sample content, full docs).
+- [X] M5: Item 25 complete (candy art assets integrated into board rendering).
 - [x] M6: Item 26 complete (platform distributions for Windows, Linux, macOS with bundled JRE).
 - [x] M7: Items 27–42 complete (special pieces created from 4-line/T-or-L-5/5-line/2x2 patterns, activations implemented, track-configurable counts supported, and tests/docs/sample tracks updated).
-
+- [x] M8a: Phase 1 complete (blockers + multi-objective quick wins).
+- [x] M8b: Phase 2 complete (holes/split/irregular board geometry via mask + gravity updates).
+- [x] M8c: Phase 3 complete (one-way tiles + teleporters).
+- [ ] M8d: Phase 4 complete (ingredient/drop mode + spawner tiles).
+- [ ] M8e: Phase 5 complete (campaign map + progression persistence).
+- [ ] M8f: Phase 6 complete (telemetry collection + bounded difficulty auto-tuning).
+- [ ] M8g: Phase 7 complete (balancing/performance/polish).
+- [ ] M9: 
 ## Definition Of Done (MVP)
 - [ ] `mvn clean verify` passes with all tests green and zero compiler warnings from project sources (`src/main` + `src/test`).
 - [ ] User can pick any folder of track JSON files and play any valid track.

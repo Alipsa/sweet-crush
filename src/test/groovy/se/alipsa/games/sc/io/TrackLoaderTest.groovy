@@ -2,6 +2,10 @@ package se.alipsa.games.sc.io
 
 import groovy.json.JsonOutput
 import se.alipsa.games.sc.core.SpecialPieceType
+import se.alipsa.games.sc.core.BlockerType
+import se.alipsa.games.sc.core.FlowDirection
+import se.alipsa.games.sc.core.Position
+import se.alipsa.games.sc.model.ObjectiveType
 import se.alipsa.games.sc.model.Track
 import spock.lang.Specification
 import spock.lang.TempDir
@@ -165,6 +169,99 @@ class TrackLoaderTest extends Specification {
     track.specialPieceBudget(SpecialPieceType.SMALL_BOMB) == 3
     track.specialPieceBudget(SpecialPieceType.BOMB) == 1
     track.specialPieceBudget(SpecialPieceType.FISH) == 0
+  }
+
+  def 'loads blockers and objectives for M8a tracks'() {
+    given:
+    TrackLoader loader = new TrackLoader()
+    writeTrack(tempDir.resolve('advanced.json'), [
+        id        : 'advanced-01',
+        name      : 'Advanced',
+        blockers  : [
+            [x: 1, y: 1, type: 'JELLY', layers: 2],
+            [x: 2, y: 3, type: 'ICE', layers: 1]
+        ],
+        objectives: [
+            [type: 'SCORE', target: 1400],
+            [type: 'CLEAR_BLOCKER', target: 2],
+            [type: 'COLLECT_COLOR', target: 5, color: 'RED']
+        ]
+    ])
+
+    when:
+    LoadResult result = loader.loadTracks(tempDir)
+
+    then:
+    result.errors.isEmpty()
+    Track track = result.tracks.find { it.id == 'advanced-01' } as Track
+    track != null
+    track.blockers[new Position(1, 1)]?.type == BlockerType.JELLY
+    track.blockers[new Position(1, 1)]?.layers == 2
+    track.objectives*.type == [ObjectiveType.SCORE, ObjectiveType.CLEAR_BLOCKER, ObjectiveType.COLLECT_COLOR]
+  }
+
+  def 'loads board mask and preserves playable-hole layout'() {
+    given:
+    TrackLoader loader = new TrackLoader()
+    writeTrack(tempDir.resolve('mask.json'), [
+        id   : 'mask-01',
+        name : 'Mask',
+        board: [
+            mask: [
+                '...#...',
+                '..###..',
+                '.......',
+                '...#...',
+                '...#...',
+                '..###..',
+                '.......',
+                '.......',
+                '...#...'
+            ]
+        ]
+    ])
+
+    when:
+    LoadResult result = loader.loadTracks(tempDir)
+
+    then:
+    result.errors.isEmpty()
+    Track track = result.tracks.find { it.id == 'mask-01' } as Track
+    track != null
+    track.hasMask()
+    !track.isPlayable(3, 0)
+    track.isPlayable(0, 0)
+  }
+
+  def 'loads one-way tiles and teleporters for M8c geometry tracks'() {
+    given:
+    TrackLoader loader = new TrackLoader()
+    writeTrack(tempDir.resolve('geometry.json'), [
+        id   : 'geometry-01',
+        name : 'Geometry',
+        board: [
+            oneWay    : [
+                [x: 1, y: 1, direction: 'LEFT'],
+                [x: 5, y: 2, direction: 'DOWN']
+            ],
+            teleporters: [
+                [from: [x: 0, y: 0], to: [x: 6, y: 8]],
+                [from: [x: 6, y: 0], to: [x: 0, y: 8]]
+            ]
+        ]
+    ])
+
+    when:
+    LoadResult result = loader.loadTracks(tempDir)
+
+    then:
+    result.errors.isEmpty()
+    Track track = result.tracks.find { it.id == 'geometry-01' } as Track
+    track != null
+    track.hasOneWayTiles()
+    track.hasTeleporters()
+    track.oneWayTiles[new Position(1, 1)] == FlowDirection.LEFT
+    track.teleporters[new Position(0, 0)] == new Position(6, 8)
   }
 
   private void writeTrack(Path path, Map overrides = [:]) {

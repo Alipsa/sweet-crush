@@ -4,7 +4,10 @@ import com.github.weisj.jsvg.SVGDocument
 import com.github.weisj.jsvg.parser.SVGLoader
 import com.github.weisj.jsvg.view.ViewBox
 import se.alipsa.games.sc.core.Board
+import se.alipsa.games.sc.core.Blocker
+import se.alipsa.games.sc.core.BlockerType
 import se.alipsa.games.sc.core.CandyType
+import se.alipsa.games.sc.core.FlowDirection
 import se.alipsa.games.sc.core.GameSession
 import se.alipsa.games.sc.core.Piece
 import se.alipsa.games.sc.core.Position
@@ -19,6 +22,7 @@ import java.awt.AlphaComposite
 import java.awt.Color
 import java.awt.Composite
 import java.awt.Dimension
+import java.awt.Font
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
@@ -41,6 +45,13 @@ class BoardPanel extends JPanel {
       (CandyType.YELLOW): new Color(0xE6C65A), // Earth
       (CandyType.PURPLE): new Color(0xD9DEE3), // Metal
       (CandyType.ORANGE): new Color(0xA8793E)  // Earth variant
+  ].asImmutable()
+  private static final Map<BlockerType, Color> BLOCKER_COLORS = [
+      (BlockerType.JELLY)   : new Color(0x8EB9FF),
+      (BlockerType.CRATE)   : new Color(0x8A5E3B),
+      (BlockerType.LICORICE): new Color(0x2D2D2D),
+      (BlockerType.ICE)     : new Color(0x9EDBFF),
+      (BlockerType.HONEY)   : new Color(0xC48C2C)
   ].asImmutable()
 
   private static final Map<CandyType, BufferedImage> CANDY_IMAGES = loadCandyImages()
@@ -275,6 +286,9 @@ class BoardPanel extends JPanel {
     if (!board.inBounds(x, y)) {
       return null
     }
+    if (!board.isPlayable(x, y)) {
+      return null
+    }
     new Position(x, y)
   }
 
@@ -336,8 +350,16 @@ class BoardPanel extends JPanel {
       for (int x = 0; x < board.width; x++) {
         int left = offsetX + (x * cellSize)
         int top = offsetY + (y * cellSize)
+        if (!board.isPlayable(x, y)) {
+          g2.setColor(new Color(0x1E1E1E))
+          g2.fillRect(left, top, cellSize, cellSize)
+          g2.setColor(new Color(0x565656))
+          g2.drawRect(left, top, cellSize, cellSize)
+          continue
+        }
+
         Piece piece = board.getPiece(x, y)
-        CandyType candy = piece?.color
+        Blocker blocker = board.getBlocker(x, y)
 
         g2.setColor(new Color(0xD1D5DB))
         g2.drawRect(left, top, cellSize, cellSize)
@@ -348,6 +370,10 @@ class BoardPanel extends JPanel {
         if (piece != null && !draggedSource && !hiddenByAnimation) {
           drawCandyAtCell(g2, piece, left, top, cellSize, 1.0f)
         }
+        if (blocker != null) {
+          drawBlockerOverlay(g2, blocker, left, top, cellSize)
+        }
+        drawGeometryOverlay(g2, x, y, left, top, cellSize)
 
         if (draggedSource) {
           int inset = Math.max(2, cellSize / 10)
@@ -376,6 +402,51 @@ class BoardPanel extends JPanel {
     g2.dispose()
   }
 
+  private void drawGeometryOverlay(Graphics2D g2, int x, int y, int left, int top, int cellSize) {
+    FlowDirection direction = board.flowDirectionAt(x, y)
+    Position teleporterTarget = board.teleporterTargetAt(x, y)
+    if (direction == null && teleporterTarget == null) {
+      return
+    }
+
+    int cx = left + cellSize.intdiv(2)
+    int cy = top + cellSize.intdiv(2)
+    java.awt.Stroke oldStroke = g2.stroke
+
+    if (teleporterTarget != null) {
+      int radius = Math.max(5, cellSize.intdiv(6))
+      g2.setColor(new Color(129, 230, 217, 210))
+      g2.setStroke(new java.awt.BasicStroke(Math.max(1.4f, (float) (cellSize * 0.045d))))
+      g2.drawOval(cx - radius, cy - radius, radius * 2, radius * 2)
+      g2.setColor(new Color(45, 212, 191, 190))
+      g2.fillOval(cx - Math.max(2, radius.intdiv(3)), cy - Math.max(2, radius.intdiv(3)), Math.max(4, radius.intdiv(2) * 2), Math.max(4, radius.intdiv(2) * 2))
+    }
+
+    if (direction != null) {
+      int lineLength = Math.max(8, cellSize.intdiv(4))
+      int ex = cx + (direction.dx * lineLength)
+      int ey = cy + (direction.dy * lineLength)
+      g2.setStroke(new java.awt.BasicStroke(Math.max(1.8f, (float) (cellSize * 0.05d)),
+          java.awt.BasicStroke.CAP_ROUND,
+          java.awt.BasicStroke.JOIN_ROUND))
+      g2.setColor(new Color(17, 24, 39, 190))
+      g2.drawLine(cx, cy, ex, ey)
+
+      int head = Math.max(3, cellSize.intdiv(9))
+      if (direction == FlowDirection.LEFT || direction == FlowDirection.RIGHT) {
+        int sx = direction == FlowDirection.RIGHT ? -1 : 1
+        g2.drawLine(ex, ey, ex + (sx * head), ey - head)
+        g2.drawLine(ex, ey, ex + (sx * head), ey + head)
+      } else {
+        int sy = direction == FlowDirection.DOWN ? -1 : 1
+        g2.drawLine(ex, ey, ex - head, ey + (sy * head))
+        g2.drawLine(ex, ey, ex + head, ey + (sy * head))
+      }
+    }
+
+    g2.stroke = oldStroke
+  }
+
   private void drawCandyAtCell(Graphics2D g2,
                                Piece piece,
                                int left,
@@ -397,6 +468,40 @@ class BoardPanel extends JPanel {
       drawCandy(g2, piece.color, drawLeft, drawTop, drawSize, alpha)
     }
     drawSpecialOverlay(g2, piece, drawLeft, drawTop, drawSize, alpha)
+  }
+
+  private void drawBlockerOverlay(Graphics2D g2, Blocker blocker, int left, int top, int cellSize) {
+    if (blocker == null) {
+      return
+    }
+
+    int inset = Math.max(2, cellSize / 10)
+    int drawLeft = left + inset
+    int drawTop = top + inset
+    int drawSize = cellSize - (2 * inset)
+    int cornerArc = Math.max(6, drawSize.intdiv(4))
+    Color base = BLOCKER_COLORS.getOrDefault(blocker.type, new Color(0x666666))
+
+    Composite oldComposite = g2.composite
+    g2.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.42f)
+    g2.setColor(base)
+    g2.fillRoundRect(drawLeft, drawTop, drawSize, drawSize, cornerArc, cornerArc)
+    g2.composite = oldComposite
+
+    g2.setColor(new Color(20, 20, 20, 180))
+    g2.drawRoundRect(drawLeft, drawTop, drawSize, drawSize, cornerArc, cornerArc)
+
+    if (blocker.layers > 1) {
+      String text = blocker.layers.toString()
+      Font oldFont = g2.font
+      g2.font = oldFont.deriveFont(Math.max(10f, (float) (drawSize * 0.26d)))
+      java.awt.FontMetrics fm = g2.getFontMetrics()
+      int tx = drawLeft + drawSize - fm.stringWidth(text) - Math.max(2, drawSize / 8)
+      int ty = drawTop + fm.ascent + Math.max(1, drawSize / 10)
+      g2.setColor(new Color(255, 255, 255, 220))
+      g2.drawString(text, tx, ty)
+      g2.font = oldFont
+    }
   }
 
   private void drawCandy(Graphics2D g2,

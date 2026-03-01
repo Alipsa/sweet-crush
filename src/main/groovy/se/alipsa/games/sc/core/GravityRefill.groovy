@@ -1,29 +1,112 @@
 package se.alipsa.games.sc.core
 
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+
 class GravityRefill {
+
+  private static final Logger log = LogManager.getLogger(GravityRefill)
 
   void apply(Board board, Map<CandyType, Integer> spawnWeights, Random random) {
     Map<CandyType, Integer> effectiveWeights = normalizeWeights(spawnWeights)
+    applyWithoutRefill(board)
+    refillEmptyCells(board, effectiveWeights, random)
+  }
 
-    for (int x = 0; x < board.width; x++) {
-      int writeY = board.height - 1
-      for (int y = board.height - 1; y >= 0; y--) {
-        Piece cell = board.getPiece(x, y)
-        if (cell != null) {
-          if (writeY != y) {
-            board.setPiece(x, writeY, cell)
-            board.setPiece(x, y, null)
-          }
-          writeY--
-        }
+  void applyWithoutRefill(Board board) {
+    if (board == null) {
+      return
+    }
+
+    boolean topologyActive = board.hasOneWayTiles() || board.hasTeleporters()
+    int maxIterations = Math.max(1, board.width * board.height * 8)
+    for (int iteration = 0; iteration < maxIterations; iteration++) {
+      int moved = settleOnce(board)
+      if (topologyActive && moved > 0 && log.isDebugEnabled()) {
+        log.debug('Topology gravity iteration {} moved {} pieces', iteration + 1, moved)
       }
-
-      while (writeY >= 0) {
-        CandyType nextCandy = pickCandy(effectiveWeights, random, [] as Set<CandyType>)
-        board.setPiece(x, writeY, nextCandy == null ? null : Piece.normal(nextCandy))
-        writeY--
+      if (moved == 0) {
+        return
       }
     }
+  }
+
+  private void refillEmptyCells(Board board,
+                                Map<CandyType, Integer> spawnWeights,
+                                Random random) {
+    for (int y = 0; y < board.height; y++) {
+      for (int x = 0; x < board.width; x++) {
+        if (!board.isPlayable(x, y) || board.getPiece(x, y) != null) {
+          continue
+        }
+        CandyType nextCandy = pickCandy(spawnWeights, random, [] as Set<CandyType>)
+        board.setPiece(x, y, nextCandy == null ? null : Piece.normal(nextCandy))
+      }
+    }
+  }
+
+  private int settleOnce(Board board) {
+    int movedCount = 0
+    Set<Position> movedInto = [] as Set<Position>
+
+    for (int y = board.height - 1; y >= 0; y--) {
+      for (int x = 0; x < board.width; x++) {
+        if (!board.isPlayable(x, y)) {
+          continue
+        }
+
+        Position current = new Position(x, y)
+        if (movedInto.contains(current)) {
+          continue
+        }
+
+        Piece piece = board.getPiece(x, y)
+        if (piece == null) {
+          continue
+        }
+
+        Position next = nextFallPosition(board, current)
+        if (next == null || board.getPiece(next.x, next.y) != null) {
+          continue
+        }
+
+        board.setPiece(next.x, next.y, piece)
+        board.setPiece(x, y, null)
+        movedInto << next
+        movedCount++
+      }
+    }
+
+    movedCount
+  }
+
+  private static Position nextFallPosition(Board board, Position current) {
+    Position teleported = board.teleporterTargetAt(current.x, current.y)
+    if (teleported != null && board.getPiece(teleported.x, teleported.y) == null) {
+      return teleported
+    }
+
+    FlowDirection direction = board.flowDirectionAt(current.x, current.y) ?: FlowDirection.DOWN
+    firstOpenPlayableAlong(board, current, direction)
+  }
+
+  private static Position firstOpenPlayableAlong(Board board,
+                                                 Position origin,
+                                                 FlowDirection direction) {
+    if (direction == null) {
+      return null
+    }
+
+    int x = origin.x + direction.dx
+    int y = origin.y + direction.dy
+    while (board.inBounds(x, y)) {
+      if (board.isPlayable(x, y)) {
+        return board.getPiece(x, y) == null ? new Position(x, y) : null
+      }
+      x += direction.dx
+      y += direction.dy
+    }
+    null
   }
 
   static CandyType pickCandy(Map<CandyType, Integer> spawnWeights,

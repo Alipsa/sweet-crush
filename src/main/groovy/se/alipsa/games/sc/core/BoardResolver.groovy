@@ -25,11 +25,15 @@ class BoardResolver {
 
   Board createInitialBoard(Track track, GameListener listener = null) {
     Map<CandyType, Integer> weights = GravityRefill.normalizeWeights(track.spawnWeights)
+    boolean[][] playableMask = track?.playableMask()
+    Map<Position, FlowDirection> oneWayTiles = track?.oneWayTiles
+    Map<Position, Position> teleporters = track?.teleporters
 
     for (int retry = 0; retry < RESHUFFLE_SEED_RETRIES; retry++) {
       for (int attempt = 0; attempt < RESHUFFLE_ATTEMPTS_PER_SEED; attempt++) {
-        Board candidate = generateBoard(track.width, track.height, weights)
+        Board candidate = generateBoard(track.width, track.height, weights, playableMask, oneWayTiles, teleporters)
         if (candidate != null && !matchFinder.hasAnyMatch(candidate) && hasLegalSwap(candidate)) {
+          applyInitialBlockers(candidate, track)
           return candidate
         }
       }
@@ -62,6 +66,7 @@ class BoardResolver {
     Map<CandyType, Integer> weights = GravityRefill.normalizeWeights(spawnWeights)
     List<Integer> groupSizes = []
     List<Map<CandyType, Integer>> groupCandyCounts = []
+    Map<BlockerType, Integer> clearedBlockers = new EnumMap<>(BlockerType)
 
     Set<Position> activationSeeds = new LinkedHashSet<>(forcedActivations ?: [])
     Set<Position> preferredCreationAnchors = new LinkedHashSet<>(forcedActivations ?: [])
@@ -160,6 +165,10 @@ class BoardResolver {
       Map<CandyType, Integer> counts = new EnumMap<>(CandyType)
       int clearedCount = 0
       clearPositions.each { Position pos ->
+        Board.BlockerDamage blockerDamage = board.hitBlocker(pos.x, pos.y)
+        if (blockerDamage.cleared && blockerDamage.type != null) {
+          clearedBlockers[blockerDamage.type] = clearedBlockers.getOrDefault(blockerDamage.type, 0) + 1
+        }
         Piece piece = board.getPiece(pos.x, pos.y)
         if (piece != null) {
           clearedCount++
@@ -185,7 +194,7 @@ class BoardResolver {
     }
 
     ensurePlayable(board, weights, listener)
-    return new CascadeResult(groupSizes, groupCandyCounts)
+    return new CascadeResult(groupSizes, groupCandyCounts, clearedBlockers)
   }
 
   boolean ensurePlayable(Board board,
@@ -196,10 +205,15 @@ class BoardResolver {
     }
 
     Map<CandyType, Integer> weights = GravityRefill.normalizeWeights(spawnWeights)
+    Map<Position, Blocker> blockers = captureBlockers(board)
+    boolean[][] playableMask = board.copyPlayableMask()
+    Map<Position, FlowDirection> oneWayTiles = board.copyOneWayTiles()
+    Map<Position, Position> teleporters = board.copyTeleporters()
 
     for (int retry = 0; retry < RESHUFFLE_SEED_RETRIES; retry++) {
       for (int attempt = 0; attempt < RESHUFFLE_ATTEMPTS_PER_SEED; attempt++) {
-        Board candidate = generateBoard(board.width, board.height, weights)
+        Board candidate = generateBoard(board.width, board.height, weights, playableMask, oneWayTiles, teleporters)
+        restoreBlockers(candidate, blockers)
         if (candidate != null && !matchFinder.hasAnyMatch(candidate) && hasLegalSwap(candidate)) {
           board.copyFrom(candidate)
           return true
@@ -214,6 +228,9 @@ class BoardResolver {
   boolean hasLegalSwap(Board board) {
     for (int y = 0; y < board.height; y++) {
       for (int x = 0; x < board.width; x++) {
+        if (!board.isPlayable(x, y) || board.getPiece(x, y) == null) {
+          continue
+        }
         if (x + 1 < board.width && createsMatchAfterSwap(board, x, y, x + 1, y)) {
           return true
         }
@@ -226,8 +243,14 @@ class BoardResolver {
   }
 
   private boolean createsMatchAfterSwap(Board board, int x1, int y1, int x2, int y2) {
+    if (!board.isPlayable(x1, y1) || !board.isPlayable(x2, y2)) {
+      return false
+    }
     Piece first = board.getPiece(x1, y1)
     Piece second = board.getPiece(x2, y2)
+    if (first == null || second == null) {
+      return false
+    }
     if (isSpecialSwapCombo(first, second) || isSwapTriggeredSpecial(first) || isSwapTriggeredSpecial(second)) {
       return true
     }
@@ -827,7 +850,7 @@ class BoardResolver {
   private boolean createsAdditionalMatchAfterFishHit(Board board, Position target, int baselineMatchedCells) {
     Board simulated = board.clone()
     simulated.setPiece(target.x, target.y, null)
-    applyGravityWithoutRefill(simulated, target.x)
+    applyGravityWithoutRefill(simulated)
     int afterMatchedCells = matchedCellCount(simulated)
     afterMatchedCells > baselineMatchedCells
   }
@@ -840,28 +863,23 @@ class BoardResolver {
     matched.size()
   }
 
-  private static void applyGravityWithoutRefill(Board board, int columnX) {
-    int writeY = board.height - 1
-    for (int y = board.height - 1; y >= 0; y--) {
-      Piece piece = board.getPiece(columnX, y)
-      if (piece != null) {
-        if (writeY != y) {
-          board.setPiece(columnX, writeY, piece)
-          board.setPiece(columnX, y, null)
-        }
-        writeY--
-      }
-    }
-    for (int y = writeY; y >= 0; y--) {
-      board.setPiece(columnX, y, null)
-    }
+  private void applyGravityWithoutRefill(Board board) {
+    gravityRefill.applyWithoutRefill(board)
   }
 
-  private Board generateBoard(int width, int height, Map<CandyType, Integer> spawnWeights) {
-    Board board = new Board(width, height)
+  private Board generateBoard(int width,
+                              int height,
+                              Map<CandyType, Integer> spawnWeights,
+                              boolean[][] playableMask = null,
+                              Map<Position, FlowDirection> oneWayTiles = null,
+                              Map<Position, Position> teleporters = null) {
+    Board board = new Board(width, height, playableMask, oneWayTiles, teleporters)
 
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
+        if (!board.isPlayable(x, y)) {
+          continue
+        }
         Set<CandyType> forbidden = [] as Set<CandyType>
 
         if (x >= 2) {
@@ -892,14 +910,59 @@ class BoardResolver {
     board
   }
 
+  private static void applyInitialBlockers(Board board, Track track) {
+    if (board == null || track?.blockers == null || track.blockers.isEmpty()) {
+      return
+    }
+    track.blockers.each { Position pos, Blocker blocker ->
+      if (pos != null && blocker != null && board.inBounds(pos.x, pos.y)) {
+        board.setBlocker(pos.x, pos.y, blocker)
+      }
+    }
+  }
+
+  private static Map<Position, Blocker> captureBlockers(Board board) {
+    Map<Position, Blocker> blockers = [:]
+    if (board == null) {
+      return blockers
+    }
+    for (int y = 0; y < board.height; y++) {
+      for (int x = 0; x < board.width; x++) {
+        Blocker blocker = board.getBlocker(x, y)
+        if (blocker != null) {
+          blockers[new Position(x, y)] = blocker
+        }
+      }
+    }
+    blockers
+  }
+
+  private static void restoreBlockers(Board board, Map<Position, Blocker> blockers) {
+    if (board == null || blockers == null || blockers.isEmpty()) {
+      return
+    }
+    blockers.each { Position pos, Blocker blocker ->
+      if (pos != null && blocker != null && board.inBounds(pos.x, pos.y)) {
+        board.setBlocker(pos.x, pos.y, blocker)
+      }
+    }
+  }
+
   static class CascadeResult {
     final List<Integer> groupSizes
     final List<Map<CandyType, Integer>> groupCandyCounts
+    final Map<BlockerType, Integer> clearedBlockers
 
     CascadeResult(List<Integer> groupSizes = [],
-                  List<Map<CandyType, Integer>> groupCandyCounts = []) {
+                  List<Map<CandyType, Integer>> groupCandyCounts = [],
+                  Map<BlockerType, Integer> clearedBlockers = [:]) {
       this.groupSizes = List.copyOf(groupSizes)
       this.groupCandyCounts = List.copyOf(groupCandyCounts)
+      Map<BlockerType, Integer> normalized = new EnumMap<>(BlockerType)
+      if (clearedBlockers != null) {
+        normalized.putAll(clearedBlockers)
+      }
+      this.clearedBlockers = Collections.unmodifiableMap(normalized)
     }
   }
 

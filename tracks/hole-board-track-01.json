@@ -1,0 +1,29 @@
+{
+  "id": "hole-board-01",
+  "name": "Hole Board 1",
+  "width": 7,
+  "height": 9,
+  "moves": 24,
+  "targetScore": 1400,
+  "spawnWeights": {
+    "RED": 3,
+    "BLUE": 3,
+    "GREEN": 3,
+    "YELLOW": 2,
+    "PURPLE": 2,
+    "ORANGE": 2
+  },
+  "board": {
+    "mask": [
+      "..#....",
+      "...#...",
+      ".......",
+      ".#...#.",
+      ".......",
+      "...#...",
+      "....#..",
+      ".......",
+      "..#...."
+    ]
+  }
+}

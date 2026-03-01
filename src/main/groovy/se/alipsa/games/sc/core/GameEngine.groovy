@@ -2,6 +2,9 @@ package se.alipsa.games.sc.core
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import se.alipsa.games.sc.core.BlockerType
+import se.alipsa.games.sc.model.Objective
+import se.alipsa.games.sc.model.ObjectiveType
 import se.alipsa.games.sc.model.Track
 
 import java.util.concurrent.Callable
@@ -32,6 +35,8 @@ class GameEngine implements AutoCloseable, GameSession {
   private volatile int movesLeft
   private volatile boolean gameOver = false
   private final Map<SpecialPieceType, Integer> remainingSpecialPieces
+  private final List<ObjectiveProgressState> objectiveStates
+  private final Object objectiveLock = new Object()
 
   GameEngine(Track track,
              Random random = new Random(),
@@ -59,6 +64,9 @@ class GameEngine implements AutoCloseable, GameSession {
     this.listener = listener ?: NO_OP_LISTENER
     this.movesLeft = track.moves
     this.remainingSpecialPieces = new EnumMap<>(track.specialPieces ?: [:])
+    this.objectiveStates = (track.objectives ?: []).collect { Objective objective ->
+      new ObjectiveProgressState(objective)
+    }
     this.board = boardResolver.createInitialBoard(track, this.listener)
     this.currentBoardSnapshot = this.board?.clone()
   }
@@ -96,6 +104,12 @@ class GameEngine implements AutoCloseable, GameSession {
     return Collections.unmodifiableMap(new EnumMap<>(remainingSpecialPieces))
   }
 
+  List<ObjectiveProgress> getObjectiveProgress() {
+    synchronized (objectiveLock) {
+      return objectiveStates.collect { ObjectiveProgressState state -> state.snapshot() }
+    }
+  }
+
   boolean isGameOver() {
     gameOver
   }
@@ -128,6 +142,9 @@ class GameEngine implements AutoCloseable, GameSession {
     Board snapshot = board.clone()
     for (int y = 0; y < snapshot.height; y++) {
       for (int x = 0; x < snapshot.width; x++) {
+        if (!snapshot.isPlayable(x, y) || snapshot.getPiece(x, y) == null) {
+          continue
+        }
         if (x + 1 < snapshot.width && isLegalHintSwap(snapshot, x, y, x + 1, y)) {
           return Optional.of(new HintMove(new Position(x, y), new Position(x + 1, y)))
         }
@@ -160,9 +177,15 @@ class GameEngine implements AutoCloseable, GameSession {
     if (!board.inBounds(x1, y1) || !board.inBounds(x2, y2) || !isOrthogonallyAdjacent(x1, y1, x2, y2)) {
       return false
     }
+    if (!board.isPlayable(x1, y1) || !board.isPlayable(x2, y2)) {
+      return false
+    }
 
     Piece firstBefore = board.getPiece(x1, y1)
     Piece secondBefore = board.getPiece(x2, y2)
+    if (firstBefore == null || secondBefore == null) {
+      return false
+    }
     boolean swapContainsSwapTriggeredSpecial = isSwapTriggeredSpecial(firstBefore) || isSwapTriggeredSpecial(secondBefore)
     boolean swapIsSpecialCombo = isSpecialSwapCombo(firstBefore, secondBefore)
 
@@ -201,6 +224,7 @@ class GameEngine implements AutoCloseable, GameSession {
     }
     int gainedScore = scoreCascade(cascadeResult)
     score += gainedScore
+    updateObjectiveProgress(cascadeResult)
 
     listener.onBoardUpdated(board.clone())
     listener.onScoreChanged(score)
@@ -226,7 +250,11 @@ class GameEngine implements AutoCloseable, GameSession {
     for (int y = 0; y < board.height; y++) {
       out.append(y.toString().padRight(4))
       for (int x = 0; x < board.width; x++) {
-        out.append(tokenFor(board.getPiece(x, y)).padRight(4))
+        if (!board.isPlayable(x, y)) {
+          out.append('##'.padRight(6))
+        } else {
+          out.append(tokenFor(board.getPiece(x, y), board.getBlocker(x, y)).padRight(6))
+        }
       }
       if (y < board.height - 1) {
         out.append('\n')
@@ -235,28 +263,39 @@ class GameEngine implements AutoCloseable, GameSession {
     out.toString()
   }
 
-  private static String tokenFor(Piece piece) {
+  private static String tokenFor(Piece piece, Blocker blocker = null) {
+    String base
     if (piece == null) {
-      return '__'
+      base = '__'
+    } else {
+      String color = piece.color?.name()?.substring(0, 1) ?: '?'
+      if (!piece.isSpecial()) {
+        base = color
+      } else {
+        switch (piece.specialType) {
+          case SpecialPieceType.SWEEPER:
+            base = color + (piece.sweeperHorizontal ? 'SH' : 'SV')
+            break
+          case SpecialPieceType.SMALL_BOMB:
+            base = color + 'SB'
+            break
+          case SpecialPieceType.BOMB:
+            base = color + 'BM'
+            break
+          case SpecialPieceType.FISH:
+            base = color + 'FS'
+            break
+          default:
+            base = color + '??'
+        }
+      }
     }
 
-    String color = piece.color?.name()?.substring(0, 1) ?: '?'
-    if (!piece.isSpecial()) {
-      return color
+    if (blocker == null) {
+      return base
     }
-
-    switch (piece.specialType) {
-      case SpecialPieceType.SWEEPER:
-        return color + (piece.sweeperHorizontal ? 'SH' : 'SV')
-      case SpecialPieceType.SMALL_BOMB:
-        return color + 'SB'
-      case SpecialPieceType.BOMB:
-        return color + 'BM'
-      case SpecialPieceType.FISH:
-        return color + 'FS'
-      default:
-        return color + '??'
-    }
+    String blockerTag = blocker.type.name().substring(0, 1) + blocker.layers
+    "${base}|${blockerTag}"
   }
 
   private void evaluateTerminalState() {
@@ -264,7 +303,7 @@ class GameEngine implements AutoCloseable, GameSession {
       return
     }
 
-    if (score >= track.targetScore) {
+    if (hasMetWinCondition()) {
       gameOver = true
       listener.onGameOver(GameOutcome.WIN, score, movesLeft)
       return
@@ -281,8 +320,14 @@ class GameEngine implements AutoCloseable, GameSession {
   }
 
   private boolean isLegalHintSwap(Board candidateBoard, int x1, int y1, int x2, int y2) {
+    if (!candidateBoard.isPlayable(x1, y1) || !candidateBoard.isPlayable(x2, y2)) {
+      return false
+    }
     Piece first = candidateBoard.getPiece(x1, y1)
     Piece second = candidateBoard.getPiece(x2, y2)
+    if (first == null || second == null) {
+      return false
+    }
     boolean swapContainsSwapTriggeredSpecial = isSwapTriggeredSpecial(first) || isSwapTriggeredSpecial(second)
     boolean swapIsSpecialCombo = isSpecialSwapCombo(first, second)
     if (swapContainsSwapTriggeredSpecial || swapIsSpecialCombo) {
@@ -330,6 +375,49 @@ class GameEngine implements AutoCloseable, GameSession {
     return eligibleCandyCount * 10
   }
 
+  private boolean hasMetWinCondition() {
+    if (objectiveStates.isEmpty()) {
+      return score >= track.targetScore
+    }
+    synchronized (objectiveLock) {
+      objectiveStates.every { ObjectiveProgressState state -> state.complete }
+    }
+  }
+
+  private void updateObjectiveProgress(BoardResolver.CascadeResult cascadeResult) {
+    if (objectiveStates.isEmpty()) {
+      return
+    }
+
+    Map<CandyType, Integer> clearedCandies = new EnumMap<>(CandyType)
+    cascadeResult.groupCandyCounts.each { Map<CandyType, Integer> group ->
+      group.each { CandyType candyType, Integer count ->
+        clearedCandies[candyType] = clearedCandies.getOrDefault(candyType, 0) + (count ?: 0)
+      }
+    }
+    Map<BlockerType, Integer> clearedBlockers = cascadeResult.clearedBlockers ?: [:]
+
+    synchronized (objectiveLock) {
+      objectiveStates.each { ObjectiveProgressState state ->
+        switch (state.objective.type) {
+          case ObjectiveType.SCORE:
+            state.updateProgress(score)
+            break
+          case ObjectiveType.COLLECT_COLOR:
+            int collected = state.objective.color == null ? 0 : clearedCandies.getOrDefault(state.objective.color, 0)
+            state.increment(collected)
+            break
+          case ObjectiveType.CLEAR_BLOCKER:
+            int cleared = state.objective.blockerType == null
+                ? (clearedBlockers.values().sum(0) as int)
+                : clearedBlockers.getOrDefault(state.objective.blockerType, 0)
+            state.increment(cleared)
+            break
+        }
+      }
+    }
+  }
+
   private static final class NoOpGameListener implements GameListener {
     @Override
     void onBoardUpdated(Board board) {
@@ -355,6 +443,48 @@ class GameEngine implements AutoCloseable, GameSession {
     HintMove(Position first, Position second) {
       this.first = first
       this.second = second
+    }
+  }
+
+  static final class ObjectiveProgress {
+    final Objective objective
+    final int current
+    final int target
+    final boolean complete
+
+    ObjectiveProgress(Objective objective, int current, int target, boolean complete) {
+      this.objective = objective
+      this.current = current
+      this.target = target
+      this.complete = complete
+    }
+  }
+
+  private static final class ObjectiveProgressState {
+    final Objective objective
+    int current
+
+    ObjectiveProgressState(Objective objective) {
+      this.objective = objective
+      this.current = 0
+    }
+
+    void increment(int delta) {
+      if (delta > 0) {
+        updateProgress(current + delta)
+      }
+    }
+
+    void updateProgress(int nextValue) {
+      current = Math.max(0, Math.min(nextValue, objective.target))
+    }
+
+    boolean isComplete() {
+      current >= objective.target
+    }
+
+    ObjectiveProgress snapshot() {
+      new ObjectiveProgress(objective, current, objective.target, isComplete())
     }
   }
 }

@@ -9,6 +9,7 @@ import se.alipsa.games.sc.core.GameListener
 import se.alipsa.games.sc.core.GameOutcome
 import se.alipsa.games.sc.io.LoadResult
 import se.alipsa.games.sc.io.TrackLoader
+import se.alipsa.games.sc.model.ObjectiveType
 import se.alipsa.games.sc.model.Track
 
 import javax.swing.JFrame
@@ -133,6 +134,7 @@ class MainFrame extends JFrame {
           JOptionPane.INFORMATION_MESSAGE)
       currentTrackIndex = -1
       controlPanel.updateGoal('Choose a track to start')
+      controlPanel.updateObjectives([])
       controlPanel.updateScore(0)
       controlPanel.updateMovesLeft(0)
       controlPanel.updateSpecials([:])
@@ -162,6 +164,7 @@ class MainFrame extends JFrame {
     gameEngine = new GameEngine(track, new Random(), ensureGameWorker(), new UiGameListener())
     boardPanel.setGame(track, gameEngine)
     controlPanel.updateGoal(goalTextFor(track))
+    controlPanel.updateObjectives(objectiveLinesFor(gameEngine.objectiveProgress))
     controlPanel.updateScore(0)
     controlPanel.updateMovesLeft(track.moves)
     controlPanel.updateSpecials(gameEngine.remainingSpecialPieces)
@@ -429,6 +432,10 @@ class MainFrame extends JFrame {
   }
 
   private static String goalTextFor(Track track) {
+    if (track.hasObjectives()) {
+      return "Complete all objectives in ${track.moves} moves"
+    }
+
     String scoringText
     if (track.scoresAllColors()) {
       scoringText = 'all colors score'
@@ -440,6 +447,33 @@ class MainFrame extends JFrame {
     return "Reach ${track.targetScore} points in ${track.moves} moves (${scoringText})"
   }
 
+  private static List<String> objectiveLinesFor(List<GameEngine.ObjectiveProgress> progress) {
+    if (progress == null || progress.isEmpty()) {
+      return []
+    }
+
+    return progress.collect { GameEngine.ObjectiveProgress objectiveProgress ->
+      String prefix = objectiveProgress.complete ? '[x]' : '[ ]'
+      String label
+      switch (objectiveProgress.objective.type) {
+        case ObjectiveType.SCORE:
+          label = 'Score'
+          break
+        case ObjectiveType.CLEAR_BLOCKER:
+          label = objectiveProgress.objective.blockerType == null
+              ? 'Clear blockers'
+              : "Clear ${objectiveProgress.objective.blockerType.name()} blockers"
+          break
+        case ObjectiveType.COLLECT_COLOR:
+          label = "Collect ${objectiveProgress.objective.color.name()}"
+          break
+        default:
+          label = objectiveProgress.objective.type.name()
+      }
+      "${prefix} ${label}: ${objectiveProgress.current}/${objectiveProgress.target}"
+    }
+  }
+
   private class UiGameListener implements GameListener {
     @Override
     void onBoardUpdated(Board board) {
@@ -447,6 +481,7 @@ class MainFrame extends JFrame {
         boardPanel.updateBoard(board)
         controlPanel.updateMovesLeft(gameEngine.movesLeft)
         controlPanel.updateSpecials(gameEngine.remainingSpecialPieces)
+        controlPanel.updateObjectives(objectiveLinesFor(gameEngine.objectiveProgress))
       }
     }
 
@@ -456,6 +491,7 @@ class MainFrame extends JFrame {
         controlPanel.updateScore(score)
         controlPanel.updateMovesLeft(gameEngine.movesLeft)
         controlPanel.updateSpecials(gameEngine.remainingSpecialPieces)
+        controlPanel.updateObjectives(objectiveLinesFor(gameEngine.objectiveProgress))
       }
     }
 

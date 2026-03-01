@@ -1,0 +1,31 @@
+{
+  "id": "blockers-objectives-01",
+  "name": "Blockers + Objectives",
+  "width": 7,
+  "height": 9,
+  "moves": 26,
+  "targetScore": 1500,
+  "spawnWeights": {
+    "RED": 3,
+    "BLUE": 3,
+    "GREEN": 3,
+    "YELLOW": 2,
+    "PURPLE": 2,
+    "ORANGE": 2
+  },
+  "blockers": [
+    { "x": 1, "y": 2, "type": "JELLY", "layers": 2 },
+    { "x": 2, "y": 2, "type": "CRATE", "layers": 2 },
+    { "x": 3, "y": 2, "type": "LICORICE", "layers": 1 },
+    { "x": 4, "y": 2, "type": "ICE", "layers": 2 },
+    { "x": 5, "y": 2, "type": "HONEY", "layers": 1 },
+    { "x": 2, "y": 4, "type": "JELLY", "layers": 1 },
+    { "x": 4, "y": 4, "type": "CRATE", "layers": 3 },
+    { "x": 3, "y": 6, "type": "ICE", "layers": 2 }
+  ],
+  "objectives": [
+    { "type": "SCORE", "target": 1500 },
+    { "type": "CLEAR_BLOCKER", "target": 6 },
+    { "type": "COLLECT_COLOR", "color": "RED", "target": 18 }
+  ]
+}

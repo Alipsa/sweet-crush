@@ -96,6 +96,18 @@ class ControlPanelTest extends Specification {
     panel.specialsText.contains('Bomb: 1')
   }
 
+  def 'updates objective lines text'() {
+    given:
+    ControlPanel panel = new ControlPanel()
+
+    when:
+    panel.updateObjectives(['[ ] Score: 0/1000', '[ ] Clear blockers: 0/3'])
+
+    then:
+    panel.objectivesText.contains('Score: 0/1000')
+    panel.objectivesText.contains('Clear blockers: 0/3')
+  }
+
   def 'emphasizes specials size when remaining counts change after initialization'() {
     given:
     ControlPanel panel = new ControlPanel()

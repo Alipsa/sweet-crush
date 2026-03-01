@@ -23,6 +23,8 @@ class ControlPanel extends JPanel {
   private static final java.awt.Color BUTTON_BACKGROUND = new java.awt.Color(0x5A5A5A)
 
   private final JLabel goalLabel = new JLabel()
+  private final JLabel objectivesHeaderLabel = new JLabel('Objectives:')
+  private final JLabel objectivesLabel = new JLabel('Complete the score goal')
   private final JLabel scoreLabel = new JLabel('Score: 0')
   private final JLabel movesLabel = new JLabel('Moves left: 0')
   private final JLabel specialsHeaderLabel = new JLabel('Specials left:')
@@ -52,6 +54,8 @@ class ControlPanel extends JPanel {
     goalLabel.alignmentX = Component.LEFT_ALIGNMENT
     scoreLabel.alignmentX = Component.LEFT_ALIGNMENT
     movesLabel.alignmentX = Component.LEFT_ALIGNMENT
+    objectivesHeaderLabel.alignmentX = Component.LEFT_ALIGNMENT
+    objectivesLabel.alignmentX = Component.LEFT_ALIGNMENT
     specialsHeaderLabel.alignmentX = Component.LEFT_ALIGNMENT
     sweeperLabel.alignmentX = Component.LEFT_ALIGNMENT
     smallBombLabel.alignmentX = Component.LEFT_ALIGNMENT
@@ -67,6 +71,10 @@ class ControlPanel extends JPanel {
     styleButton(boardDebugButton)
 
     add(goalLabel)
+    add(Box.createVerticalStrut(6))
+    add(objectivesHeaderLabel)
+    add(Box.createVerticalStrut(4))
+    add(objectivesLabel)
     add(Box.createVerticalStrut(LABEL_GAP))
     add(scoreLabel)
     add(Box.createVerticalStrut(LABEL_GAP))
@@ -121,6 +129,20 @@ class ControlPanel extends JPanel {
     movesLabel.text = "Moves left: ${movesLeft}"
   }
 
+  void updateObjectives(List<String> lines) {
+    List<String> cleaned = (lines ?: []).findAll { String line ->
+      line != null && !line.trim().isEmpty()
+    }
+    if (cleaned.isEmpty()) {
+      objectivesLabel.text = 'Complete the score goal'
+      return
+    }
+    String body = cleaned.collect { String line ->
+      escapeHtml(line)
+    }.join('<br/>')
+    objectivesLabel.text = "<html>${body}</html>"
+  }
+
   void updateSpecials(Map<SpecialPieceType, Integer> remaining) {
     Map<SpecialPieceType, Integer> values = normalizeSpecials(remaining)
     boolean changed = specialsInitialized && specialsChanged(values)
@@ -142,6 +164,13 @@ class ControlPanel extends JPanel {
 
   String getScoreText() {
     scoreLabel.text
+  }
+
+  String getObjectivesText() {
+    objectivesLabel.text
+        ?.replace('<html>', '')
+        ?.replace('</html>', '')
+        ?.replace('<br/>', '\n')
   }
 
   String getMovesText() {
@@ -284,6 +313,8 @@ class ControlPanel extends JPanel {
 
   private void applyLabelFonts(Font font) {
     goalLabel.font = font
+    objectivesHeaderLabel.font = font
+    objectivesLabel.font = font
     scoreLabel.font = font
     movesLabel.font = font
     specialsHeaderLabel.font = font
@@ -295,6 +326,8 @@ class ControlPanel extends JPanel {
 
   private void applyLabelColors(java.awt.Color color) {
     goalLabel.foreground = color
+    objectivesHeaderLabel.foreground = color
+    objectivesLabel.foreground = color
     scoreLabel.foreground = color
     movesLabel.foreground = color
     specialsHeaderLabel.foreground = color
