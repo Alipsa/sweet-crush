@@ -171,6 +171,8 @@ Each track file is a single JSON object with the following fields:
 
 ### M6 — Platform Distributions
 - [x] 26. Create platform-specific distributions for **Windows**, **Linux**, and **macOS** with bundled JRE (using `jlink`/`jpackage` or equivalent). Each distribution includes a launch script (`sweet-crush.bat` for Windows, `sweet-crush.sh` for Linux/macOS) and a self-contained Java runtime so end users do not need a pre-installed JDK.
+- [x] 26a. Create GitHub repository `Alipsa/sweet-crush`, connect local project `origin`, and push the `main` branch.
+- [x] 26b. Add GitHub Actions workflow (`.github/workflows/distributions.yml`) that builds zipped platform distributions on `ubuntu-latest`, `macos-latest`, and `windows-latest` using Maven dist profiles.
 
 ### M7 — Special Pieces (Sweepers, Small Bombs, Bombs, Fishes) + Track-Configurable Counts
 - [x] 27. `src/main/groovy/se/alipsa/games/sc/core/SpecialPieceType.groovy`: add enum with `SWEEPER`, `SMALL_BOMB`, `BOMB`, `FISH`.
