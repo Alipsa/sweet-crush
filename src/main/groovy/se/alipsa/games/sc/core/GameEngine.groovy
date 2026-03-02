@@ -28,6 +28,7 @@ class GameEngine implements AutoCloseable, GameSession {
 
   private final AtomicBoolean resolvingFlag = new AtomicBoolean(false)
   private final GravityRefill postMoveGravity = new GravityRefill()
+  private final Random postMoveRandom
 
   private volatile GameListener listener
   private volatile Board board
@@ -77,6 +78,7 @@ class GameEngine implements AutoCloseable, GameSession {
     this.ownsWorker = gameWorker == null
     this.listener = listener ?: NO_OP_LISTENER
     this.movesLeft = track.moves
+    this.postMoveRandom = spawnerRandom ?: new Random()
     this.remainingSpecialPieces = new EnumMap<>(track.specialPieces ?: [:])
     this.objectiveStates = (track.objectives ?: []).collect { Objective objective ->
       new ObjectiveProgressState(objective)
@@ -85,7 +87,7 @@ class GameEngine implements AutoCloseable, GameSession {
         ? new IngredientManager(track.ingredientConfig, track.spawnCells, track.exitCells)
         : null
     this.spawnerManager = track.hasSpawners()
-        ? new SpawnerManager(track.spawners, spawnerRandom ?: new Random())
+        ? new SpawnerManager(track.spawners, postMoveRandom)
         : null
     this.board = boardResolver.createInitialBoard(track, this.listener)
     this.currentBoardSnapshot = this.board?.clone()
@@ -260,8 +262,7 @@ class GameEngine implements AutoCloseable, GameSession {
       }
     }
     if (ingredientManager != null || spawnerManager != null) {
-      postMoveGravity.applyWithoutRefill(board)
-      postMoveGravity.applyIngredientGravity(board)
+      postMoveGravity.apply(board, track.spawnWeights, postMoveRandom)
     }
 
     listener.onBoardUpdated(board.clone())

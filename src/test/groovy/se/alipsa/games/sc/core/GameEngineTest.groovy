@@ -361,7 +361,8 @@ class GameEngineTest extends Specification {
     then:
     success
     board.getPiece(2, 0)?.specialType == SpecialPieceType.FISH
-    board.getPiece(1, 0) == null
+    board.getPiece(1, 0) != null
+    !board.getPiece(1, 0).isSpecial()
   }
 
   private static Board legalSwapBoard(Map<Position, FlowDirection> oneWayTiles = [:],
