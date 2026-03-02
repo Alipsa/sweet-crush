@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger
 import se.alipsa.games.sc.ui.MainFrame
 
 import javax.swing.SwingUtilities
+import javax.swing.UIManager
 
 class SweetCrush {
 
@@ -14,6 +15,8 @@ class SweetCrush {
     String banner = 'Sweet Crush starting up...'
     println banner
     log.info(banner)
+
+    UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName())
 
     SwingUtilities.invokeLater {
       MainFrame frame = new MainFrame()

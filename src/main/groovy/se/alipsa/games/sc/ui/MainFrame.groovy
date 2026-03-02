@@ -386,6 +386,7 @@ class MainFrame extends JFrame {
   }
 
   private static void styleTrackActionButton(JButton button) {
+    button.opaque = true
     button.margin = new Insets(2, 6, 2, 6)
     button.preferredSize = new Dimension(118, 28)
     button.background = new Color(0x5A5A5A)

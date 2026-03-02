@@ -522,7 +522,8 @@ class BoardResolver {
           Position target = chooseFishTarget(board, origin, true, usedTargets)
           if (target != null) {
             usedTargets << target
-            addFishLaunchHit(origin, target)
+            listener?.onFishLaunched(origin, target)
+            addBomb(target)
           }
         }
         break

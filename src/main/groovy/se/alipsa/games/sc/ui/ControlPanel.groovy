@@ -339,6 +339,7 @@ class ControlPanel extends JPanel {
   }
 
   private void styleButton(JButton button) {
+    button.opaque = true
     button.background = BUTTON_BACKGROUND
     button.foreground = java.awt.Color.WHITE
     button.focusPainted = false
