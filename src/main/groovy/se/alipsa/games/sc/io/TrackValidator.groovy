@@ -770,11 +770,40 @@ class TrackValidator {
               'Spawner table entry kind is required')
           return
         }
+        SpawnKind kindEnum
         try {
-          SpawnKind.valueOf(tableEntry.kind.toString())
+          kindEnum = SpawnKind.valueOf(tableEntry.kind.toString())
         } catch (Exception ignored) {
           errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
               "Unknown spawn kind: ${tableEntry.kind}")
+          return
+        }
+
+        if (!tableEntry.containsKey('type') || tableEntry.type == null) {
+          errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+              'Spawner table entry type is required')
+        } else {
+          String typeValue = tableEntry.type.toString()
+          if (kindEnum == SpawnKind.BLOCKER) {
+            try {
+              BlockerType.valueOf(typeValue)
+            } catch (Exception ignored) {
+              errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+                  "Unknown blocker type in spawner table: ${typeValue}")
+            }
+            Integer layers = asInteger(tableEntry.layers)
+            if (layers == null || layers < 1) {
+              errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+                  'Spawner table entry layers must be an integer >= 1 for BLOCKER kind')
+            }
+          } else if (kindEnum == SpawnKind.SPECIAL) {
+            try {
+              SpecialPieceType.valueOf(typeValue)
+            } catch (Exception ignored) {
+              errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+                  "Unknown special piece type in spawner table: ${typeValue}")
+            }
+          }
         }
 
         Integer weight = asInteger(tableEntry.weight)

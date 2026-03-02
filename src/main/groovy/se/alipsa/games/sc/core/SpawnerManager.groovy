@@ -9,14 +9,14 @@ class SpawnerManager {
   private final List<SpawnerConfig> spawners
   private final Random random
   private final Map<Position, Integer> turnCounters = [:]
-  private final Map<Position, Integer> activeCounts = [:]
+  private final Map<Position, List<SpawnRecord>> activeSpawns = [:]
 
   SpawnerManager(List<SpawnerConfig> spawners, Random random) {
     this.spawners = spawners ?: []
     this.random = random ?: new Random()
     this.spawners.each { SpawnerConfig config ->
       turnCounters[config.position] = 0
-      activeCounts[config.position] = 0
+      activeSpawns[config.position] = []
     }
   }
 
@@ -31,8 +31,11 @@ class SpawnerManager {
         return
       }
 
-      int active = activeCounts[pos] ?: 0
-      if (active >= config.maxActive) {
+      List<SpawnRecord> records = activeSpawns.getOrDefault(pos, [])
+      records = records.findAll { SpawnRecord record -> isStillActive(board, record) }
+      activeSpawns[pos] = records
+
+      if (records.size() >= config.maxActive) {
         return
       }
 
@@ -47,18 +50,24 @@ class SpawnerManager {
 
       SpawnEvent event = applySpawn(board, pos, selected)
       if (event != null) {
-        activeCounts[pos] = active + 1
+        records << new SpawnRecord(pos, selected.kind)
         events << event
       }
     }
     events
   }
 
-  void decrementActiveCount(Position spawnerPosition) {
-    int current = activeCounts[spawnerPosition] ?: 0
-    if (current > 0) {
-      activeCounts[spawnerPosition] = current - 1
+  private static boolean isStillActive(Board board, SpawnRecord record) {
+    if (!board.inBounds(record.position.x, record.position.y)) {
+      return false
     }
+    if (record.kind == SpawnKind.BLOCKER) {
+      return board.getBlocker(record.position.x, record.position.y) != null
+    } else if (record.kind == SpawnKind.SPECIAL) {
+      Piece piece = board.getPiece(record.position.x, record.position.y)
+      return piece != null && piece.isSpecial()
+    }
+    false
   }
 
   private SpawnTableEntry selectWeighted(List<SpawnTableEntry> table) {
@@ -117,6 +126,16 @@ class SpawnerManager {
       return new SpawnEvent(pos, entry.kind, entry.type)
     }
     null
+  }
+
+  private static final class SpawnRecord {
+    final Position position
+    final SpawnKind kind
+
+    SpawnRecord(Position position, SpawnKind kind) {
+      this.position = position
+      this.kind = kind
+    }
   }
 
   static final class SpawnEvent {

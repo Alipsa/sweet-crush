@@ -37,7 +37,7 @@ class SpawnerManagerTest extends Specification {
     board.getBlocker(1, 1).type == BlockerType.JELLY
   }
 
-  def 'respects maxActive guard'() {
+  def 'respects maxActive guard and does not spawn beyond limit'() {
     given:
     SpawnerConfig config = new SpawnerConfig(
         new Position(1, 1),
@@ -49,18 +49,47 @@ class SpawnerManagerTest extends Specification {
     Board board = new Board(3, 3)
     fillBoard(board)
 
-    when:
+    when: 'first turn spawns a blocker'
     List<SpawnerManager.SpawnEvent> events1 = manager.processAfterMove(board)
 
     then:
     events1.size() == 1
+    board.getBlocker(1, 1) != null
 
-    when:
-    board.setBlocker(1, 1, null)
+    when: 'second turn skips because maxActive reached and blocker still present'
     List<SpawnerManager.SpawnEvent> events2 = manager.processAfterMove(board)
 
     then:
     events2.isEmpty()
+    board.getBlocker(1, 1) != null
+  }
+
+  def 'resumes spawning after spawned entity is removed from board'() {
+    given:
+    SpawnerConfig config = new SpawnerConfig(
+        new Position(1, 1),
+        1,
+        1,
+        [new SpawnTableEntry(SpawnKind.BLOCKER, 'CRATE', 1, 1)]
+    )
+    SpawnerManager manager = new SpawnerManager([config], new Random(42L))
+    Board board = new Board(3, 3)
+    fillBoard(board)
+
+    when: 'first turn spawns a blocker'
+    manager.processAfterMove(board)
+
+    then:
+    board.getBlocker(1, 1) != null
+
+    when: 'blocker is cleared from the board, then next turn triggers'
+    board.setBlocker(1, 1, null)
+    List<SpawnerManager.SpawnEvent> events = manager.processAfterMove(board)
+
+    then: 'spawner detects removal and spawns again'
+    events.size() == 1
+    board.getBlocker(1, 1) != null
+    board.getBlocker(1, 1).type == BlockerType.CRATE
   }
 
   def 'spawns special piece by upgrading existing candy'() {
