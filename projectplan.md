@@ -213,7 +213,7 @@ Each track file is a single JSON object with the following fields:
 - [x] 42d. `GameEngine.groovy` + `BoardResolver.groovy` + core tests: implement special-vs-special combo swap rules (`SWEEPER`/`SMALL_BOMB`/`FISH`/`BOMB`) including least-promising fish targeting for specific combos, color-convert mass activations for `* + BOMB`, and full-board clear for `BOMB + BOMB`.
 - [x] 42e. `BoardResolver.groovy` + `GameListener.groovy` + `BoardPanel.groovy`: implement normal `BOMB` swap behavior to target the swapped candy color globally (clear all matching-color pieces), emit bomb-beam callbacks per target, and render beam feedback during transition animation.
 
-### M8+ — Advanced Modes Expansion Plan (Blockers, Geometry, Objectives, Ingredients, Spawners, Campaign, Telemetry)
+### M8+ — Advanced Modes Expansion Plan (Blockers, Geometry, Objectives, Ingredients, Spawners, Campaign)
 
 This section is the implementation plan for:
 1. Blockers/obstacles with 1-3 hit layers (`JELLY`, `CRATE`, `LICORICE`, `ICE`, `HONEY`)
@@ -222,7 +222,6 @@ This section is the implementation plan for:
 4. Ingredient/drop mode (spawn cherries/nuts, drop to exits)
 5. Spawner tiles (spawn blockers/specials every N turns)
 6. Progression map (chapters/themes/unlocks)
-7. Difficulty tuning by telemetry (auto-adjust score/moves by fail rate)
 
 ### M9 
 - [x] Store last used track directory in user preferences (using the preference api) and auto-load on startup.
@@ -257,16 +256,12 @@ This section is the implementation plan for:
 - [x] 48. Add spawner config:
   - `spawners: [{x,y,everyTurns,maxActive,table}]`.
   - `table: [{kind,type,layers,weight}]` where `kind` in `BLOCKER|SPECIAL`.
-- [ ] 49. Add telemetry-driven tuning policy per track:
-  - `difficultyTuning: {enabled,targetFailRate,minMoves,maxMoves,minTargetScore,maxTargetScore,adjustStepMoves,adjustStepScore}`.
-  - Track definitions remain deterministic; tuning applies at session start and is persisted separately.
-- [ ] 50. Add campaign schema file `tracks/campaign.json`:
+- [ ] 49. Add campaign schema file `tracks/campaign.json`:
   - `campaignId`, `name`, `chapters`.
   - Chapters contain ordered level IDs, theme metadata, and unlock conditions (`previousLevelWin`, optional star threshold).
   - Optional per-level mechanic gates (which blockers/geometry/special systems are enabled).
-- [ ] 51. Add runtime persistence files (outside track JSON):
+- [ ] 50. Add runtime persistence files (outside track JSON):
   - `progress.json` for campaign unlock state and stars.
-  - `telemetry.jsonl` for anonymized local outcomes (track id, attempts, win/loss, moves used, score reached, timestamp).
 
 #### Engine and UI Tasks
 
@@ -295,14 +290,10 @@ This section is the implementation plan for:
 - [ ] 58. Campaign/progression engine:
   - Add campaign service for chapter navigation, unlock rules, and star calculation.
   - Persist progress on win and load on startup.
-- [ ] 59. Telemetry + auto-tuning engine:
-  - Record attempt outcomes locally.
-  - At level start, compute rolling fail rate and adjust `moves`/`targetScore` within per-track bounds.
-  - Use deterministic adjustment formula; always log applied adjustments.
 - [x] 60. UI changes (M8a subset):
   - Left panel: multi-objective tracker with live per-objective progress.
   - Board: blocker layer badges/overlays.
-  - Geometry-specific overlays, campaign map screen, and telemetry post-level summary are deferred.
+  - Geometry-specific overlays and campaign map screen are deferred.
 
 #### Test Matrix
 
@@ -314,7 +305,6 @@ This section is the implementation plan for:
 | Ingredient mode  | spawn cadence, exit detection, blocked exit logic       | ingredient drop with cascades/specials/teleports  | ingredient icon movement and counters                | no stuck ingredient without either valid move, reshuffle, or fail signal |
 | Spawners         | cadence and weighted spawn selection                    | long-run levels with repeated spawns              | spawner marker and spawn feedback                    | bounded active spawns and no infinite resolve loop                       |
 | Campaign map     | unlock condition evaluation, persistence I/O            | chapter progression and replay behavior           | map navigation and lock state visuals                | persistence corruption fallback and migration handling                   |
-| Telemetry tuning | rolling fail-rate computation and clamp bounds          | repeated attempts change start params as expected | adjustment disclosure in pre-level/post-level UI     | monotonic bounded adjustments under extreme win/loss streaks             |
 
 #### Phased Rollout (Quick Wins First)
 
@@ -338,11 +328,7 @@ This section is the implementation plan for:
 - [ ] Phase 5: `M8e`
   - Add campaign map (`campaign.json`) with chapters, themes, unlock rules, and progress persistence.
   - Exit criteria: complete chapter flow from locked start to unlock progression.
-- [ ] Phase 6: `M8f`
-  - Add telemetry capture and bounded auto-tuning (moves/target score).
-  - Add user-visible adjustment messaging and opt-out toggle in settings.
-  - Exit criteria: tuning changes are reproducible, bounded, and transparent.
-- [ ] Phase 7 (Polish/Balancing): `M8g`
+- [ ] Phase 6 (Polish/Balancing): `M8f`
   - Content balancing pass, tutorial tooltips for new mechanics, and performance optimization.
   - Exit criteria: target FPS/UI responsiveness maintained on HiDPI and standard displays.
 
@@ -355,7 +341,7 @@ This section is the implementation plan for:
 - M6 depends on M4 completion (full docs and sample content finalized before packaging).
 - M7 depends on M2 completion (core resolver/engine in place), and on M3 for special rendering/UI feedback.
 - M7 suggested implementation order: 27 → 27a → 28 → 29/29a/30/31 → 32 → 33 → 34 → 35 → 38/39/40 → 36/41 → 37/42.
-- M8+ depends on M7 completion (special pipeline stable). Suggested execution order: Phase 1 blockers+multi-objective → Phase 2 mask/holes/split gravity → Phase 3 one-way+teleporters → Phase 4 ingredients+spawners → Phase 5 campaign map → Phase 6 telemetry auto-tuning → Phase 7 balancing.
+- M8+ depends on M7 completion (special pipeline stable). Suggested execution order: Phase 1 blockers+multi-objective → Phase 2 mask/holes/split gravity → Phase 3 one-way+teleporters → Phase 4 ingredients+spawners → Phase 5 campaign map → Phase 6 balancing.
 
 ## Milestone Gates
 - [X] M1: Items 1a–11 complete (build works, log4j configured, `CandyType` defined, `LoadErrorCode` enum defined, load result/error types in place, track pack loading fully tested, minimal README in place). `mvn clean verify` passes, and there are zero compiler warnings from project sources (`src/main` + `src/test`).
@@ -370,8 +356,7 @@ This section is the implementation plan for:
 - [x] M8c: Phase 3 complete (one-way tiles + teleporters).
 - [x] M8d: Phase 4 complete (ingredient/drop mode + spawner tiles).
 - [ ] M8e: Phase 5 complete (campaign map + progression persistence).
-- [ ] M8f: Phase 6 complete (telemetry collection + bounded difficulty auto-tuning).
-- [ ] M8g: Phase 7 complete (balancing/performance/polish).
+- [ ] M8f: Phase 6 complete (balancing/performance/polish).
 - [x] M9:
 ## Definition Of Done (MVP)
 - [ ] `mvn clean verify` passes with all tests green and zero compiler warnings from project sources (`src/main` + `src/test`).
