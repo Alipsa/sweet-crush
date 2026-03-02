@@ -1416,8 +1416,7 @@ class BoardPanel extends JPanel {
     Set<Position> targets = new HashSet<>()
     Set<Position> forcedClearCells = collectForcedClearCells(previous, sweeps, smallBombs, fishSwims)
     boolean suppressStandardBursts =
-        (sweeps != null && !sweeps.isEmpty()) ||
-            (smallBombs != null && !smallBombs.isEmpty())
+        (smallBombs != null && !smallBombs.isEmpty())
 
     for (int x = 0; x < previous.width; x++) {
       boolean[] oldUsed = new boolean[previous.height]
