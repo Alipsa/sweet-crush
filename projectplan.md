@@ -249,12 +249,12 @@ This section is the implementation plan for:
   - `objectives: [{type,target,...}]`.
   - M8a objective types: `SCORE`, `CLEAR_BLOCKER`, `COLLECT_COLOR` (`DROP_INGREDIENT` deferred to ingredient phase).
   - `objectiveMode: "ALL"` for MVP (all objectives required to win).
-- [ ] 47. Add ingredient/drop mode config:
+- [x] 47. Add ingredient/drop mode config:
   - `ingredients.enabled: boolean`.
   - `ingredients.queue: [{type,count}]` where `type` in `CHERRY|NUT`.
   - `ingredients.spawnEveryTurns: int >= 1`.
   - Ingredient movement uses board gravity and teleport topology.
-- [ ] 48. Add spawner config:
+- [x] 48. Add spawner config:
   - `spawners: [{x,y,everyTurns,maxActive,table}]`.
   - `table: [{kind,type,layers,weight}]` where `kind` in `BLOCKER|SPECIAL`.
 - [ ] 49. Add telemetry-driven tuning policy per track:
@@ -284,11 +284,11 @@ This section is the implementation plan for:
 - [x] 55. Objective engine:
   - Evaluate objective progress events (`onScore`, `onBlockerDamaged`, `onColorCollected`, `onIngredientDropped`).
   - Win condition becomes `all objectives complete` (with score-only fallback for legacy tracks).
-- [ ] 56. Ingredient/drop engine:
+- [x] 56. Ingredient/drop engine:
   - Spawn ingredient entities from configured source cells.
   - Ingredients do not match; they fall/move until reaching exit cells.
   - Resolve blocked exits and deadlock detection with reshuffle-safe handling.
-- [ ] 57. Spawner engine:
+- [x] 57. Spawner engine:
   - Turn counter and per-spawner cadence.
   - Spawn selection by weighted table with occupancy and `maxActive` guards.
   - Prevent impossible states (no spawn target available -> skip and log).
@@ -331,7 +331,7 @@ This section is the implementation plan for:
   - Add one-way tiles and teleporters.
   - Add board debug visualization and path diagnostics logging.
   - Exit criteria: deterministic pathing and legal-swap validation on all geometry types.
-- [ ] Phase 4: `M8d`
+- [x] Phase 4: `M8d`
   - Add ingredient/drop mode (`CHERRY`, `NUT`) and exit cells.
   - Add spawner tiles for blockers and specials.
   - Exit criteria: ingredient and spawner interaction tests green with specials enabled.
@@ -368,11 +368,11 @@ This section is the implementation plan for:
 - [x] M8a: Phase 1 complete (blockers + multi-objective quick wins).
 - [x] M8b: Phase 2 complete (holes/split/irregular board geometry via mask + gravity updates).
 - [x] M8c: Phase 3 complete (one-way tiles + teleporters).
-- [ ] M8d: Phase 4 complete (ingredient/drop mode + spawner tiles).
+- [x] M8d: Phase 4 complete (ingredient/drop mode + spawner tiles).
 - [ ] M8e: Phase 5 complete (campaign map + progression persistence).
 - [ ] M8f: Phase 6 complete (telemetry collection + bounded difficulty auto-tuning).
 - [ ] M8g: Phase 7 complete (balancing/performance/polish).
-- [ ] M9: 
+- [x] M9:
 ## Definition Of Done (MVP)
 - [ ] `mvn clean verify` passes with all tests green and zero compiler warnings from project sources (`src/main` + `src/test`).
 - [ ] User can pick any folder of track JSON files and play any valid track.

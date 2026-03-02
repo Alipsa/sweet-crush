@@ -18,4 +18,10 @@ interface GameListener {
 
   default void onBombBeam(Position origin, Position target) {
   }
+
+  default void onIngredientCollected(IngredientType type, Position exitCell) {
+  }
+
+  default void onSpawnerActivated(Position position, se.alipsa.games.sc.model.SpawnKind kind, String type) {
+  }
 }

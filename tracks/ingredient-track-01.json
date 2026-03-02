@@ -1,0 +1,52 @@
+{
+  "id": "ingredient-01",
+  "name": "Ingredient Drop Level 1",
+  "width": 7,
+  "height": 9,
+  "moves": 30,
+  "targetScore": 500,
+  "specialPieces": {
+    "SWEEPER": 3,
+    "SMALL_BOMB": 3,
+    "BOMB": 2,
+    "FISH": 2
+  },
+  "spawnWeights": {
+    "RED": 3,
+    "BLUE": 3,
+    "GREEN": 2,
+    "YELLOW": 2,
+    "PURPLE": 2,
+    "ORANGE": 2
+  },
+  "ingredients": {
+    "enabled": true,
+    "spawnEveryTurns": 2,
+    "queue": [
+      { "type": "CHERRY", "count": 3 },
+      { "type": "NUT", "count": 3 }
+    ]
+  },
+  "objectives": [
+    { "type": "DROP_INGREDIENT", "target": 6 }
+  ],
+  "board": {
+    "mask": [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ],
+    "spawnCells": [
+      { "x": 3, "y": 0 }
+    ],
+    "exitCells": [
+      { "x": 3, "y": 8 }
+    ]
+  }
+}

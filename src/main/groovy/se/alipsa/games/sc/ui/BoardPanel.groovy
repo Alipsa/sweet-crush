@@ -9,6 +9,8 @@ import se.alipsa.games.sc.core.BlockerType
 import se.alipsa.games.sc.core.CandyType
 import se.alipsa.games.sc.core.FlowDirection
 import se.alipsa.games.sc.core.GameSession
+import se.alipsa.games.sc.core.Ingredient
+import se.alipsa.games.sc.core.IngredientType
 import se.alipsa.games.sc.core.Piece
 import se.alipsa.games.sc.core.Position
 import se.alipsa.games.sc.core.SpecialPieceType
@@ -373,7 +375,12 @@ class BoardPanel extends JPanel {
         if (blocker != null) {
           drawBlockerOverlay(g2, blocker, left, top, cellSize)
         }
+        Ingredient ingredient = board.getIngredient(x, y)
+        if (ingredient != null) {
+          drawIngredientOverlay(g2, ingredient, left, top, cellSize)
+        }
         drawGeometryOverlay(g2, x, y, left, top, cellSize)
+        drawSpawnExitMarkers(g2, x, y, left, top, cellSize)
 
         if (draggedSource) {
           int inset = Math.max(2, cellSize / 10)
@@ -502,6 +509,76 @@ class BoardPanel extends JPanel {
       g2.drawString(text, tx, ty)
       g2.font = oldFont
     }
+  }
+
+  private void drawIngredientOverlay(Graphics2D g2, Ingredient ingredient, int left, int top, int cellSize) {
+    if (ingredient == null) {
+      return
+    }
+
+    int inset = Math.max(3, cellSize / 6)
+    int drawLeft = left + inset
+    int drawTop = top + inset
+    int drawSize = cellSize - (2 * inset)
+    int cornerArc = Math.max(8, drawSize.intdiv(3))
+
+    Color fillColor = ingredient.type == IngredientType.CHERRY
+        ? new Color(0xCC2233)
+        : new Color(0x8B5E3C)
+
+    Composite oldComposite = g2.composite
+    g2.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.85f)
+    g2.setColor(fillColor)
+    g2.fillRoundRect(drawLeft, drawTop, drawSize, drawSize, cornerArc, cornerArc)
+    g2.composite = oldComposite
+
+    g2.setColor(new Color(255, 255, 255, 200))
+    g2.drawRoundRect(drawLeft, drawTop, drawSize, drawSize, cornerArc, cornerArc)
+
+    String label = ingredient.type == IngredientType.CHERRY ? 'Ch' : 'Nt'
+    Font oldFont = g2.font
+    g2.font = oldFont.deriveFont(Font.BOLD, Math.max(10f, (float) (drawSize * 0.36d)))
+    java.awt.FontMetrics fm = g2.getFontMetrics()
+    int tx = drawLeft + (drawSize - fm.stringWidth(label)).intdiv(2)
+    int ty = drawTop + (drawSize + fm.ascent - fm.descent).intdiv(2)
+    g2.setColor(Color.WHITE)
+    g2.drawString(label, tx, ty)
+    g2.font = oldFont
+  }
+
+  private void drawSpawnExitMarkers(Graphics2D g2, int x, int y, int left, int top, int cellSize) {
+    if (track == null) {
+      return
+    }
+
+    Position pos = new Position(x, y)
+    boolean isSpawnCell = track.spawnCells?.contains(pos)
+    boolean isExitCell = track.exitCells?.contains(pos)
+
+    if (!isSpawnCell && !isExitCell) {
+      return
+    }
+
+    int cx = left + cellSize.intdiv(2)
+    int markerSize = Math.max(4, cellSize.intdiv(8))
+    java.awt.Stroke oldStroke = g2.stroke
+    g2.setStroke(new java.awt.BasicStroke(Math.max(1.5f, (float) (cellSize * 0.04d))))
+
+    if (isSpawnCell) {
+      int arrowTop = top + Math.max(2, cellSize.intdiv(12))
+      g2.setColor(new Color(100, 220, 100, 200))
+      g2.drawLine(cx, arrowTop, cx, arrowTop + markerSize)
+      g2.drawLine(cx, arrowTop + markerSize, cx - markerSize.intdiv(2), arrowTop + markerSize.intdiv(2))
+      g2.drawLine(cx, arrowTop + markerSize, cx + markerSize.intdiv(2), arrowTop + markerSize.intdiv(2))
+    }
+
+    if (isExitCell) {
+      int bottom = top + cellSize - Math.max(2, cellSize.intdiv(12)) - markerSize
+      g2.setColor(new Color(255, 200, 50, 200))
+      g2.fillRect(cx - markerSize, bottom, markerSize * 2, markerSize)
+    }
+
+    g2.stroke = oldStroke
   }
 
   private void drawCandy(Graphics2D g2,
