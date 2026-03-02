@@ -589,7 +589,12 @@ class TrackValidator {
   }
 
   private static void validateIngredients(String fileName, Map<String, ?> rawTrack, List<LoadError> errors) {
+    boolean requiresIngredients = hasDropIngredientObjective(rawTrack)
     if (!rawTrack.containsKey('ingredients') || rawTrack.ingredients == null) {
+      if (requiresIngredients) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+            'Objective DROP_INGREDIENT requires ingredients.enabled=true and a valid ingredients configuration')
+      }
       return
     }
     if (!(rawTrack.ingredients instanceof Map)) {
@@ -599,6 +604,11 @@ class TrackValidator {
 
     Map<?, ?> ingredients = rawTrack.ingredients as Map<?, ?>
     boolean enabled = ingredients.containsKey('enabled') ? Boolean.parseBoolean(ingredients.enabled?.toString()) : false
+
+    if (requiresIngredients && !enabled) {
+      errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+          'Objective DROP_INGREDIENT requires ingredients.enabled=true and a valid ingredients configuration')
+    }
 
     if (enabled) {
       Integer width = asInteger(rawTrack.width)
@@ -647,6 +657,29 @@ class TrackValidator {
       validatePositionCells(fileName, 'spawnCells', boardConfig, mask, width, height, errors, true)
       validatePositionCells(fileName, 'exitCells', boardConfig, mask, width, height, errors, true)
     }
+  }
+
+  private static boolean hasDropIngredientObjective(Map<String, ?> rawTrack) {
+    if (!(rawTrack.objectives instanceof Collection)) {
+      return false
+    }
+    for (Object objectiveItem : (rawTrack.objectives as Collection<?>)) {
+      if (!(objectiveItem instanceof Map)) {
+        continue
+      }
+      Object typeValue = (objectiveItem as Map<?, ?>).type
+      if (typeValue == null) {
+        continue
+      }
+      try {
+        if (ObjectiveType.valueOf(typeValue.toString()) == ObjectiveType.DROP_INGREDIENT) {
+          return true
+        }
+      } catch (Exception ignored) {
+        // Invalid objective types are reported in validateObjectives.
+      }
+    }
+    false
   }
 
   private static void validatePositionCells(String fileName, String fieldName, Map<?, ?> boardConfig,

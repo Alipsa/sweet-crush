@@ -27,6 +27,7 @@ class GameEngine implements AutoCloseable, GameSession {
   private final boolean ownsWorker
 
   private final AtomicBoolean resolvingFlag = new AtomicBoolean(false)
+  private final GravityRefill postMoveGravity = new GravityRefill()
 
   private volatile GameListener listener
   private volatile Board board
@@ -247,6 +248,10 @@ class GameEngine implements AutoCloseable, GameSession {
       spawnEvents.each { SpawnerManager.SpawnEvent event ->
         listener.onSpawnerActivated(event.position, event.kind, event.type)
       }
+    }
+    if (ingredientManager != null || spawnerManager != null) {
+      postMoveGravity.applyWithoutRefill(board)
+      postMoveGravity.applyIngredientGravity(board)
     }
 
     listener.onBoardUpdated(board.clone())

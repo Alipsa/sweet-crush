@@ -48,10 +48,10 @@ class SpawnerManager {
         return
       }
 
-      SpawnEvent event = applySpawn(board, pos, selected)
-      if (event != null) {
-        records << new SpawnRecord(pos, selected.kind)
-        events << event
+      SpawnResult result = applySpawn(board, pos, selected)
+      if (result != null) {
+        records << result.record
+        events << result.event
       }
     }
     events
@@ -64,8 +64,22 @@ class SpawnerManager {
     if (record.kind == SpawnKind.BLOCKER) {
       return board.getBlocker(record.position.x, record.position.y) != null
     } else if (record.kind == SpawnKind.SPECIAL) {
-      Piece piece = board.getPiece(record.position.x, record.position.y)
-      return piece != null && piece.isSpecial()
+      return record.spawnedPiece != null && containsPiece(board, record.spawnedPiece)
+    }
+    false
+  }
+
+  private static boolean containsPiece(Board board, Piece targetPiece) {
+    for (int y = 0; y < board.height; y++) {
+      for (int x = 0; x < board.width; x++) {
+        if (!board.isPlayable(x, y)) {
+          continue
+        }
+        Piece piece = board.getPiece(x, y)
+        if (piece != null && piece.is(targetPiece)) {
+          return true
+        }
+      }
     }
     false
   }
@@ -91,14 +105,17 @@ class SpawnerManager {
     table.last()
   }
 
-  private static SpawnEvent applySpawn(Board board, Position pos, SpawnTableEntry entry) {
+  private static SpawnResult applySpawn(Board board, Position pos, SpawnTableEntry entry) {
     if (entry.kind == SpawnKind.BLOCKER) {
       if (board.getBlocker(pos.x, pos.y) != null) {
         return null
       }
       BlockerType blockerType = BlockerType.valueOf(entry.type)
       board.setBlocker(pos.x, pos.y, new Blocker(blockerType, entry.layers))
-      return new SpawnEvent(pos, entry.kind, entry.type)
+      return new SpawnResult(
+          new SpawnEvent(pos, entry.kind, entry.type),
+          SpawnRecord.blocker(pos)
+      )
     } else if (entry.kind == SpawnKind.SPECIAL) {
       Piece existing = board.getPiece(pos.x, pos.y)
       if (existing == null || existing.isSpecial()) {
@@ -123,7 +140,10 @@ class SpawnerManager {
           return null
       }
       board.setPiece(pos.x, pos.y, specialPiece)
-      return new SpawnEvent(pos, entry.kind, entry.type)
+      return new SpawnResult(
+          new SpawnEvent(pos, entry.kind, entry.type),
+          SpawnRecord.special(pos, specialPiece)
+      )
     }
     null
   }
@@ -131,10 +151,30 @@ class SpawnerManager {
   private static final class SpawnRecord {
     final Position position
     final SpawnKind kind
+    final Piece spawnedPiece
 
-    SpawnRecord(Position position, SpawnKind kind) {
+    private SpawnRecord(Position position, SpawnKind kind, Piece spawnedPiece = null) {
       this.position = position
       this.kind = kind
+      this.spawnedPiece = spawnedPiece
+    }
+
+    static SpawnRecord blocker(Position position) {
+      new SpawnRecord(position, SpawnKind.BLOCKER)
+    }
+
+    static SpawnRecord special(Position position, Piece spawnedPiece) {
+      new SpawnRecord(position, SpawnKind.SPECIAL, spawnedPiece)
+    }
+  }
+
+  private static final class SpawnResult {
+    final SpawnEvent event
+    final SpawnRecord record
+
+    SpawnResult(SpawnEvent event, SpawnRecord record) {
+      this.event = event
+      this.record = record
     }
   }
 

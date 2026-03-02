@@ -3,6 +3,11 @@ package se.alipsa.games.sc.core
 import se.alipsa.games.sc.model.Track
 import se.alipsa.games.sc.model.Objective
 import se.alipsa.games.sc.model.ObjectiveType
+import se.alipsa.games.sc.model.IngredientConfig
+import se.alipsa.games.sc.model.IngredientQueueEntry
+import se.alipsa.games.sc.model.SpawnKind
+import se.alipsa.games.sc.model.SpawnTableEntry
+import se.alipsa.games.sc.model.SpawnerConfig
 import spock.lang.Specification
 
 import java.util.concurrent.ExecutorService
@@ -278,8 +283,90 @@ class GameEngineTest extends Specification {
     !engine.objectiveProgress.find { it.objective.type == ObjectiveType.COLLECT_COLOR }.complete
   }
 
-  private static Board legalSwapBoard() {
-    Board board = new Board(3, 3)
+  def 'applies ingredient gravity after post-move ingredient spawn'() {
+    given:
+    worker = Executors.newSingleThreadExecutor()
+    Board initialBoard = legalSwapBoard()
+    StubBoardResolver resolver = new StubBoardResolver(initialBoard, [3])
+    Track ingredientTrack = new Track(
+        'ingredients-settle',
+        'Ingredients Settle',
+        3,
+        3,
+        5,
+        200,
+        uniformWeights(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        new IngredientConfig(true, [new IngredientQueueEntry(IngredientType.CHERRY, 1)], 1),
+        [new Position(1, 0)],
+        [new Position(2, 2)],
+        null
+    )
+    GameEngine engine = new GameEngine(ingredientTrack, resolver, new MatchFinder(), worker, new RecordingListener())
+
+    when:
+    boolean success = engine.submitSwap(0, 1, 1, 1).get(2, TimeUnit.SECONDS)
+    Board board = engine.snapshotBoard()
+
+    then:
+    success
+    board.getIngredient(1, 2)?.type == IngredientType.CHERRY
+    !board.hasIngredient(1, 0)
+  }
+
+  def 'applies normal gravity after spawner upgrades a piece'() {
+    given:
+    worker = Executors.newSingleThreadExecutor()
+    Map<Position, FlowDirection> oneWayTiles = [(new Position(1, 0)): FlowDirection.RIGHT]
+    Board initialBoard = legalSwapBoard(oneWayTiles)
+    initialBoard.setPiece(2, 0, null)
+    StubBoardResolver resolver = new StubBoardResolver(initialBoard, [3])
+    Track spawnerTrack = new Track(
+        'spawner-settle',
+        'Spawner Settle',
+        3,
+        3,
+        5,
+        200,
+        uniformWeights(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        oneWayTiles,
+        null,
+        null,
+        null,
+        null,
+        [new SpawnerConfig(
+            new Position(1, 0),
+            1,
+            1,
+            [new SpawnTableEntry(SpawnKind.SPECIAL, 'FISH', 1, 1)]
+        )]
+    )
+    GameEngine engine = new GameEngine(spawnerTrack, resolver, new MatchFinder(), worker, new RecordingListener())
+
+    when:
+    boolean success = engine.submitSwap(0, 1, 1, 1).get(2, TimeUnit.SECONDS)
+    Board board = engine.snapshotBoard()
+
+    then:
+    success
+    board.getPiece(2, 0)?.specialType == SpecialPieceType.FISH
+    board.getPiece(1, 0) == null
+  }
+
+  private static Board legalSwapBoard(Map<Position, FlowDirection> oneWayTiles = [:],
+                                      Map<Position, Position> teleporters = [:]) {
+    Board board = new Board(3, 3, null, oneWayTiles, teleporters)
 
     board.setCell(0, 0, CandyType.RED)
     board.setCell(1, 0, CandyType.GREEN)

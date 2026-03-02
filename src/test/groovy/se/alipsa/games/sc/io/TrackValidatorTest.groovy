@@ -358,6 +358,49 @@ class TrackValidatorTest extends Specification {
     errors.any { it.code == LoadErrorCode.INVALID_OBJECTIVES }
   }
 
+  def 'rejects DROP_INGREDIENT objective when ingredients are missing or disabled'() {
+    given:
+    Map<String, Object> missingIngredients = validTrack()
+    missingIngredients.objectives = [
+        [type: 'DROP_INGREDIENT', target: 1]
+    ]
+    Map<String, Object> disabledIngredients = validTrack()
+    disabledIngredients.objectives = [
+        [type: 'DROP_INGREDIENT', target: 1]
+    ]
+    disabledIngredients.ingredients = [enabled: false]
+
+    expect:
+    validator.validate(TEST_FILE, missingIngredients).any {
+      it.code == LoadErrorCode.INVALID_INGREDIENTS && it.message.contains('DROP_INGREDIENT')
+    }
+    validator.validate(TEST_FILE, disabledIngredients).any {
+      it.code == LoadErrorCode.INVALID_INGREDIENTS && it.message.contains('DROP_INGREDIENT')
+    }
+  }
+
+  def 'accepts DROP_INGREDIENT objective when ingredients are enabled and configured'() {
+    given:
+    Map<String, Object> rawTrack = validTrack()
+    rawTrack.objectives = [
+        [type: 'DROP_INGREDIENT', target: 2]
+    ]
+    rawTrack.ingredients = [
+        enabled        : true,
+        spawnEveryTurns: 1,
+        queue          : [
+            [type: 'CHERRY', count: 2]
+        ]
+    ]
+    rawTrack.board = [
+        spawnCells: [[x: 0, y: 0]],
+        exitCells : [[x: 6, y: 8]]
+    ]
+
+    expect:
+    validator.validate(TEST_FILE, rawTrack).isEmpty()
+  }
+
   private static Map<String, Object> validTrack() {
     [
         id          : 'classic-01',
