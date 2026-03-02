@@ -831,10 +831,12 @@ class TrackValidator {
               errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
                   "Unknown blocker type in spawner table: ${typeValue}")
             }
-            Integer layers = asInteger(tableEntry.layers)
-            if (layers == null || layers < 1) {
-              errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
-                  'Spawner table entry layers must be an integer >= 1 for BLOCKER kind')
+            if (tableEntry.containsKey('layers')) {
+              Integer layers = asInteger(tableEntry.layers)
+              if (layers == null || layers < 1) {
+                errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+                    'Spawner table entry layers must be an integer >= 1 for BLOCKER kind')
+              }
             }
           } else if (kindEnum == SpawnKind.SPECIAL) {
             try {

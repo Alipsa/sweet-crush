@@ -130,13 +130,14 @@ class Track {
     }
 
     List<Position> spawnCells = null
-    if (boardConfig != null && boardConfig.containsKey('spawnCells') && boardConfig.spawnCells != null) {
-      spawnCells = parsePositionList(boardConfig.spawnCells as Collection<?>)
-    }
-
     List<Position> exitCells = null
-    if (boardConfig != null && boardConfig.containsKey('exitCells') && boardConfig.exitCells != null) {
-      exitCells = parsePositionList(boardConfig.exitCells as Collection<?>)
+    if (ingredientConfig != null && ingredientConfig.enabled && boardConfig != null) {
+      if (boardConfig.containsKey('spawnCells') && boardConfig.spawnCells != null) {
+        spawnCells = parsePositionList(boardConfig.spawnCells as Collection<?>)
+      }
+      if (boardConfig.containsKey('exitCells') && boardConfig.exitCells != null) {
+        exitCells = parsePositionList(boardConfig.exitCells as Collection<?>)
+      }
     }
 
     List<SpawnerConfig> spawners = null
@@ -441,16 +442,19 @@ class Track {
       return null
     }
     boolean enabled = raw.containsKey('enabled') ? Boolean.parseBoolean(raw.enabled.toString()) : false
-    int spawnEveryTurns = raw.containsKey('spawnEveryTurns')
-        ? requireInteger(raw.spawnEveryTurns, 'ingredients.spawnEveryTurns')
-        : 1
+    int spawnEveryTurns = 1
     List<IngredientQueueEntry> queue = []
-    if (raw.containsKey('queue') && raw.queue instanceof Collection) {
-      (raw.queue as Collection<?>).each { Object item ->
-        Map<?, ?> entry = item as Map<?, ?>
-        IngredientType type = IngredientType.valueOf(entry.type.toString())
-        int count = requireInteger(entry.count, 'ingredients.queue.count')
-        queue << new IngredientQueueEntry(type, count)
+    if (enabled) {
+      if (raw.containsKey('spawnEveryTurns')) {
+        spawnEveryTurns = requireInteger(raw.spawnEveryTurns, 'ingredients.spawnEveryTurns')
+      }
+      if (raw.containsKey('queue') && raw.queue instanceof Collection) {
+        (raw.queue as Collection<?>).each { Object item ->
+          Map<?, ?> entry = item as Map<?, ?>
+          IngredientType type = IngredientType.valueOf(entry.type.toString())
+          int count = requireInteger(entry.count, 'ingredients.queue.count')
+          queue << new IngredientQueueEntry(type, count)
+        }
       }
     }
     new IngredientConfig(enabled, queue, spawnEveryTurns)
