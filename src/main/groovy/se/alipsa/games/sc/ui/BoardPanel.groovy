@@ -95,6 +95,9 @@ class BoardPanel extends JPanel {
   private final List<SmallBombActivation> pendingSmallBombActivations = []
   private final List<FishSwimActivation> pendingFishSwims = []
   private final List<BombBeamActivation> pendingBombBeams = []
+  private Track markerCacheTrack
+  private Set<Long> spawnCellPositions = Collections.emptySet()
+  private Set<Long> exitCellPositions = Collections.emptySet()
 
   private Runnable moveResolvedCallback
 
@@ -168,6 +171,9 @@ class BoardPanel extends JPanel {
     this.pendingSmallBombActivations.clear()
     this.pendingFishSwims.clear()
     this.pendingBombBeams.clear()
+    this.markerCacheTrack = null
+    this.spawnCellPositions = Collections.emptySet()
+    this.exitCellPositions = Collections.emptySet()
     clearHintState(false)
     clearDragState()
     stopTransitionAnimation()
@@ -595,9 +601,10 @@ class BoardPanel extends JPanel {
       return
     }
 
-    Position pos = new Position(x, y)
-    boolean isSpawnCell = track.spawnCells?.contains(pos)
-    boolean isExitCell = track.exitCells?.contains(pos)
+    refreshMarkerCellCache(track)
+    long cellKey = encodePositionKey(x, y)
+    boolean isSpawnCell = spawnCellPositions.contains(cellKey)
+    boolean isExitCell = exitCellPositions.contains(cellKey)
 
     if (!isSpawnCell && !isExitCell) {
       return
@@ -623,6 +630,32 @@ class BoardPanel extends JPanel {
     }
 
     g2.stroke = oldStroke
+  }
+
+  private void refreshMarkerCellCache(Track activeTrack) {
+    if (activeTrack == markerCacheTrack) {
+      return
+    }
+    markerCacheTrack = activeTrack
+    spawnCellPositions = encodePositionSet(activeTrack?.spawnCells)
+    exitCellPositions = encodePositionSet(activeTrack?.exitCells)
+  }
+
+  private static Set<Long> encodePositionSet(List<Position> positions) {
+    if (positions == null || positions.isEmpty()) {
+      return Collections.emptySet()
+    }
+    Set<Long> encoded = new HashSet<>(Math.max(16, positions.size() * 2))
+    positions.each { Position pos ->
+      if (pos != null) {
+        encoded << encodePositionKey(pos.x, pos.y)
+      }
+    }
+    encoded
+  }
+
+  private static long encodePositionKey(int x, int y) {
+    (((long) x) << 32) | (y & 0xffffffffL)
   }
 
   private void drawCandy(Graphics2D g2,

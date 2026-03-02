@@ -22,6 +22,7 @@ class SpawnerManager {
 
   List<SpawnEvent> processAfterMove(Board board) {
     List<SpawnEvent> events = []
+    Set<Piece> activeSpecialPieces = collectActiveSpecialPieces(board)
     spawners.each { SpawnerConfig config ->
       Position pos = config.position
       int counter = (turnCounters[pos] ?: 0) + 1
@@ -32,7 +33,7 @@ class SpawnerManager {
       }
 
       List<SpawnRecord> records = activeSpawns.getOrDefault(pos, [])
-      records = records.findAll { SpawnRecord record -> isStillActive(board, record) }
+      records = records.findAll { SpawnRecord record -> isStillActive(board, record, activeSpecialPieces) }
       activeSpawns[pos] = records
 
       if (records.size() >= config.maxActive) {
@@ -57,31 +58,32 @@ class SpawnerManager {
     events
   }
 
-  private static boolean isStillActive(Board board, SpawnRecord record) {
+  private static boolean isStillActive(Board board, SpawnRecord record, Set<Piece> activeSpecialPieces) {
     if (!board.inBounds(record.position.x, record.position.y)) {
       return false
     }
     if (record.kind == SpawnKind.BLOCKER) {
       return board.getBlocker(record.position.x, record.position.y) != null
     } else if (record.kind == SpawnKind.SPECIAL) {
-      return record.spawnedPiece != null && containsPiece(board, record.spawnedPiece)
+      return record.spawnedPiece != null && activeSpecialPieces.contains(record.spawnedPiece)
     }
     false
   }
 
-  private static boolean containsPiece(Board board, Piece targetPiece) {
+  private static Set<Piece> collectActiveSpecialPieces(Board board) {
+    Set<Piece> active = Collections.newSetFromMap(new IdentityHashMap<Piece, Boolean>())
     for (int y = 0; y < board.height; y++) {
       for (int x = 0; x < board.width; x++) {
         if (!board.isPlayable(x, y)) {
           continue
         }
         Piece piece = board.getPiece(x, y)
-        if (piece != null && piece.is(targetPiece)) {
-          return true
+        if (piece != null && piece.isSpecial()) {
+          active.add(piece)
         }
       }
     }
-    false
+    active
   }
 
   private SpawnTableEntry selectWeighted(List<SpawnTableEntry> table) {

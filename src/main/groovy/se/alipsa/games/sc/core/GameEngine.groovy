@@ -51,7 +51,8 @@ class GameEngine implements AutoCloseable, GameSession {
         new BoardResolver(random, new MatchFinder(), new GravityRefill()),
         new MatchFinder(),
         gameWorker,
-        listener
+        listener,
+        random
     )
   }
 
@@ -60,6 +61,15 @@ class GameEngine implements AutoCloseable, GameSession {
              MatchFinder matchFinder,
              ExecutorService gameWorker,
              GameListener listener = null) {
+    this(track, boardResolver, matchFinder, gameWorker, listener, null)
+  }
+
+  GameEngine(Track track,
+             BoardResolver boardResolver,
+             MatchFinder matchFinder,
+             ExecutorService gameWorker,
+             GameListener listener,
+             Random spawnerRandom) {
     this.track = track
     this.boardResolver = boardResolver
     this.matchFinder = matchFinder
@@ -75,7 +85,7 @@ class GameEngine implements AutoCloseable, GameSession {
         ? new IngredientManager(track.ingredientConfig, track.spawnCells, track.exitCells)
         : null
     this.spawnerManager = track.hasSpawners()
-        ? new SpawnerManager(track.spawners, new Random())
+        ? new SpawnerManager(track.spawners, spawnerRandom ?: new Random())
         : null
     this.board = boardResolver.createInitialBoard(track, this.listener)
     this.currentBoardSnapshot = this.board?.clone()
