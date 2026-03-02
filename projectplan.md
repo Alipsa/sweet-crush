@@ -357,7 +357,7 @@ This section is the implementation plan for:
 - [x] M8d: Phase 4 complete (ingredient/drop mode + spawner tiles).
 - [ ] M8e: Phase 5 complete (campaign map + progression persistence).
 - [ ] M8f: Phase 6 complete (balancing/performance/polish).
-- [x] M9:
+- [x] M9: UX polish (persistent track directory, track editing, readability improvements, completion-gated skip).
 ## Definition Of Done (MVP)
 - [ ] `mvn clean verify` passes with all tests green and zero compiler warnings from project sources (`src/main` + `src/test`).
 - [ ] User can pick any folder of track JSON files and play any valid track.

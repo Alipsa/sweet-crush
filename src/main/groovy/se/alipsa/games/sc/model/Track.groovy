@@ -485,7 +485,19 @@ class Track {
           Map<?, ?> tableEntry = tableItem as Map<?, ?>
           SpawnKind kind = SpawnKind.valueOf(tableEntry.kind.toString())
           String type = tableEntry.type?.toString()
-          int layers = tableEntry.containsKey('layers') ? ((Number) tableEntry.layers).intValue() : 1
+          int layers = 1
+          if (kind == SpawnKind.BLOCKER && tableEntry.containsKey('layers')) {
+            Object layersValue = tableEntry.layers
+            if (layersValue instanceof Number) {
+              layers = ((Number) layersValue).intValue()
+            } else if (layersValue != null) {
+              try {
+                layers = Integer.parseInt(layersValue.toString())
+              } catch (NumberFormatException ignored) {
+                // keep default layers = 1
+              }
+            }
+          }
           int weight = ((Number) tableEntry.weight).intValue()
           table << new SpawnTableEntry(kind, type, layers, weight)
         }

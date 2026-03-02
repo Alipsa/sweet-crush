@@ -711,6 +711,8 @@ class TrackValidator {
     Integer height = asInteger(rawTrack.height)
     boolean[][] mask = playableMask(rawTrack, width, height)
 
+    Set<String> seenPositions = [] as Set<String>
+
     (rawTrack.spawners as Collection<?>).each { Object item ->
       if (!(item instanceof Map)) {
         errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS, 'Each spawner must be a JSON object')
@@ -723,6 +725,11 @@ class TrackValidator {
       if (x == null || y == null) {
         errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS, 'Spawner x and y must be integers')
         return
+      }
+      String posKey = "${x},${y}"
+      if (!seenPositions.add(posKey)) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+            "Duplicate spawner position (${x},${y})")
       }
       if (width != null && height != null && (x < 0 || x >= width || y < 0 || y >= height)) {
         errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
