@@ -52,3 +52,32 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: target/dist/sweet-crush-*.zip
           if-no-files-found: error
+
+  cleanup-old-artifacts:
+    name: Clean up old artifacts
+    runs-on: ubuntu-latest
+    needs: build-distributions
+    permissions:
+      actions: write
+    steps:
+      - name: Delete artifacts from previous runs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflowRunId = context.runId;
+            const { owner, repo } = context.repo;
+
+            // List all artifacts in this repo
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              { owner, repo, per_page: 100 }
+            );
+
+            // Delete artifacts that belong to older runs of this workflow
+            const artifactNames = ['sweet-crush-linux', 'sweet-crush-macos', 'sweet-crush-windows'];
+            for (const artifact of artifacts) {
+              if (artifact.workflow_run?.id !== workflowRunId && artifactNames.includes(artifact.name)) {
+                console.log(`Deleting artifact: ${artifact.name} (run ${artifact.workflow_run?.id})`);
+                await github.rest.actions.deleteArtifact({ owner, repo, artifact_id: artifact.id });
+              }
+            }
