@@ -516,34 +516,78 @@ class BoardPanel extends JPanel {
       return
     }
 
-    int inset = Math.max(3, cellSize / 6)
-    int drawLeft = left + inset
-    int drawTop = top + inset
-    int drawSize = cellSize - (2 * inset)
-    int cornerArc = Math.max(8, drawSize.intdiv(3))
+    int iconSize = Math.max(10, (int) Math.round(cellSize * 0.62d))
+    int cx = left + cellSize.intdiv(2)
+    int cy = top + cellSize.intdiv(2)
 
-    Color fillColor = ingredient.type == IngredientType.CHERRY
-        ? new Color(0xCC2233)
-        : new Color(0x8B5E3C)
+    if (ingredient.type == IngredientType.CHERRY) {
+      drawCherryIngredientIcon(g2, cx, cy, iconSize)
+    } else {
+      drawAcornIngredientIcon(g2, cx, cy, iconSize)
+    }
+  }
 
-    Composite oldComposite = g2.composite
-    g2.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.85f)
-    g2.setColor(fillColor)
-    g2.fillRoundRect(drawLeft, drawTop, drawSize, drawSize, cornerArc, cornerArc)
-    g2.composite = oldComposite
+  private static void drawCherryIngredientIcon(Graphics2D g2, int cx, int cy, int size) {
+    int radius = Math.max(4, (int) Math.round(size * 0.23d))
+    int leftCx = cx - Math.max(3, radius - 1)
+    int rightCx = cx + Math.max(3, radius - 1)
+    int fruitCy = cy + Math.max(1, radius.intdiv(3))
 
-    g2.setColor(new Color(255, 255, 255, 200))
-    g2.drawRoundRect(drawLeft, drawTop, drawSize, drawSize, cornerArc, cornerArc)
+    g2.setColor(new Color(0xC51F2F))
+    g2.fillOval(leftCx - radius, fruitCy - radius, radius * 2, radius * 2)
+    g2.fillOval(rightCx - radius, fruitCy - radius, radius * 2, radius * 2)
 
-    String label = ingredient.type == IngredientType.CHERRY ? 'Ch' : 'Nt'
-    Font oldFont = g2.font
-    g2.font = oldFont.deriveFont(Font.BOLD, Math.max(10f, (float) (drawSize * 0.36d)))
-    java.awt.FontMetrics fm = g2.getFontMetrics()
-    int tx = drawLeft + (drawSize - fm.stringWidth(label)).intdiv(2)
-    int ty = drawTop + (drawSize + fm.ascent - fm.descent).intdiv(2)
-    g2.setColor(Color.WHITE)
-    g2.drawString(label, tx, ty)
-    g2.font = oldFont
+    g2.setColor(new Color(0xE84D5B))
+    int highlightR = Math.max(2, radius.intdiv(3))
+    g2.fillOval(leftCx - radius + 2, fruitCy - radius + 2, highlightR, highlightR)
+    g2.fillOval(rightCx - radius + 2, fruitCy - radius + 2, highlightR, highlightR)
+
+    java.awt.Stroke oldStroke = g2.stroke
+    g2.setStroke(new java.awt.BasicStroke(Math.max(1.5f, (float) (size * 0.07d)),
+        java.awt.BasicStroke.CAP_ROUND,
+        java.awt.BasicStroke.JOIN_ROUND))
+    g2.setColor(new Color(0x4A2B1A))
+    int stemJoinX = cx
+    int stemJoinY = fruitCy - Math.max(1, radius.intdiv(2))
+    int stemTopX = cx + Math.max(2, radius.intdiv(2))
+    int stemTopY = stemJoinY - Math.max(4, radius)
+    g2.drawLine(leftCx, stemJoinY, stemJoinX, stemJoinY)
+    g2.drawLine(rightCx, stemJoinY, stemJoinX, stemJoinY)
+    g2.drawLine(stemJoinX, stemJoinY, stemTopX, stemTopY)
+    g2.stroke = oldStroke
+
+    g2.setColor(new Color(0x4FAE56))
+    int leafW = Math.max(6, (int) Math.round(size * 0.28d))
+    int leafH = Math.max(4, (int) Math.round(size * 0.16d))
+    g2.fillOval(stemTopX - leafW.intdiv(2), stemTopY - leafH.intdiv(2), leafW, leafH)
+  }
+
+  private static void drawAcornIngredientIcon(Graphics2D g2, int cx, int cy, int size) {
+    int bodyW = Math.max(10, (int) Math.round(size * 0.48d))
+    int bodyH = Math.max(12, (int) Math.round(size * 0.58d))
+    int bodyX = cx - bodyW.intdiv(2)
+    int bodyY = cy - bodyH.intdiv(2) + Math.max(1, size.intdiv(12))
+
+    g2.setColor(new Color(0x9A623C))
+    g2.fillOval(bodyX, bodyY, bodyW, bodyH)
+
+    g2.setColor(new Color(0x7A4A2B))
+    int capH = Math.max(5, (int) Math.round(bodyH * 0.34d))
+    g2.fillRoundRect(bodyX - 1, bodyY - Math.max(1, capH.intdiv(4)), bodyW + 2, capH, capH, capH)
+
+    java.awt.Stroke oldStroke = g2.stroke
+    g2.setStroke(new java.awt.BasicStroke(Math.max(1.3f, (float) (size * 0.055d)),
+        java.awt.BasicStroke.CAP_ROUND,
+        java.awt.BasicStroke.JOIN_ROUND))
+    g2.setColor(new Color(0x5A381F))
+    int stemY = bodyY - Math.max(2, size.intdiv(7))
+    g2.drawLine(cx, bodyY, cx, stemY)
+    g2.stroke = oldStroke
+
+    g2.setColor(new Color(0xB98356))
+    int highlightW = Math.max(2, bodyW.intdiv(5))
+    int highlightH = Math.max(3, bodyH.intdiv(6))
+    g2.fillOval(bodyX + Math.max(2, bodyW.intdiv(5)), bodyY + Math.max(3, bodyH.intdiv(4)), highlightW, highlightH)
   }
 
   private void drawSpawnExitMarkers(Graphics2D g2, int x, int y, int left, int top, int cellSize) {

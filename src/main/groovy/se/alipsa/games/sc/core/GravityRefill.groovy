@@ -87,7 +87,9 @@ class GravityRefill {
 
   private static Position nextIngredientFallPosition(Board board, Position current) {
     Position teleported = board.teleporterTargetAt(current.x, current.y)
-    if (teleported != null && !board.hasIngredient(teleported.x, teleported.y)) {
+    if (teleported != null &&
+        !board.hasIngredient(teleported.x, teleported.y) &&
+        board.getPiece(teleported.x, teleported.y) == null) {
       return teleported
     }
 
@@ -106,7 +108,9 @@ class GravityRefill {
     int y = origin.y + direction.dy
     while (board.inBounds(x, y)) {
       if (board.isPlayable(x, y)) {
-        return !board.hasIngredient(x, y) ? new Position(x, y) : null
+        return (board.getPiece(x, y) == null && !board.hasIngredient(x, y))
+            ? new Position(x, y)
+            : null
       }
       x += direction.dx
       y += direction.dy

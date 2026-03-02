@@ -55,10 +55,9 @@ class GravityRefillTest extends Specification {
     board.getCell(2, 2) == CandyType.BLUE
   }
 
-  def 'ingredient falls down via gravity'() {
+  def 'ingredient falls down via gravity through empty cells'() {
     given:
     Board board = new Board(3, 4)
-    fillBoard(board)
     board.setIngredient(1, 0, new Ingredient(IngredientType.CHERRY))
     GravityRefill refill = new GravityRefill()
 
@@ -80,7 +79,6 @@ class GravityRefillTest extends Specification {
         [:],
         [(new Position(1, 1)): new Position(0, 3)]
     )
-    fillBoard(board)
     board.setIngredient(1, 0, new Ingredient(IngredientType.NUT))
     GravityRefill refill = new GravityRefill()
 
@@ -102,7 +100,6 @@ class GravityRefillTest extends Specification {
         [(new Position(1, 1)): FlowDirection.RIGHT],
         [:]
     )
-    fillBoard(board)
     board.setIngredient(1, 0, new Ingredient(IngredientType.CHERRY))
     GravityRefill refill = new GravityRefill()
 
@@ -112,6 +109,21 @@ class GravityRefillTest extends Specification {
     then: 'ingredient falls to (1,1), redirects RIGHT to (2,1), then falls DOWN to (2,2)'
     board.hasIngredient(2, 2)
     !board.hasIngredient(1, 0)
+    !board.hasIngredient(1, 1)
+  }
+
+  def 'ingredient does not move through occupied piece cells'() {
+    given:
+    Board board = new Board(3, 4)
+    board.setIngredient(1, 0, new Ingredient(IngredientType.CHERRY))
+    board.setCell(1, 1, CandyType.RED)
+    GravityRefill refill = new GravityRefill()
+
+    when:
+    refill.applyIngredientGravity(board)
+
+    then:
+    board.hasIngredient(1, 0)
     !board.hasIngredient(1, 1)
   }
 

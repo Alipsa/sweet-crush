@@ -283,7 +283,7 @@ class GameEngineTest extends Specification {
     !engine.objectiveProgress.find { it.objective.type == ObjectiveType.COLLECT_COLOR }.complete
   }
 
-  def 'applies ingredient gravity after post-move ingredient spawn'() {
+  def 'spawns ingredient at spawn cell when below cell is occupied'() {
     given:
     worker = Executors.newSingleThreadExecutor()
     Board initialBoard = legalSwapBoard()
@@ -316,8 +316,8 @@ class GameEngineTest extends Specification {
 
     then:
     success
-    board.getIngredient(1, 2)?.type == IngredientType.CHERRY
-    !board.hasIngredient(1, 0)
+    board.getIngredient(1, 0)?.type == IngredientType.CHERRY
+    !board.hasIngredient(1, 2)
   }
 
   def 'applies normal gravity after spawner upgrades a piece'() {
