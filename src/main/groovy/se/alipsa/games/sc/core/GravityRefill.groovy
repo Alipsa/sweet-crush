@@ -123,7 +123,7 @@ class GravityRefill {
                                 Random random) {
     for (int y = 0; y < board.height; y++) {
       for (int x = 0; x < board.width; x++) {
-        if (!board.isPlayable(x, y) || board.getPiece(x, y) != null) {
+        if (!board.isPlayable(x, y) || board.getPiece(x, y) != null || board.hasIngredient(x, y)) {
           continue
         }
         CandyType nextCandy = pickCandy(spawnWeights, random, [] as Set<CandyType>)
@@ -169,7 +169,9 @@ class GravityRefill {
 
   private static Position nextFallPosition(Board board, Position current) {
     Position teleported = board.teleporterTargetAt(current.x, current.y)
-    if (teleported != null && board.getPiece(teleported.x, teleported.y) == null) {
+    if (teleported != null &&
+        board.getPiece(teleported.x, teleported.y) == null &&
+        !board.hasIngredient(teleported.x, teleported.y)) {
       return teleported
     }
 
@@ -188,7 +190,9 @@ class GravityRefill {
     int y = origin.y + direction.dy
     while (board.inBounds(x, y)) {
       if (board.isPlayable(x, y)) {
-        return board.getPiece(x, y) == null ? new Position(x, y) : null
+        return (board.getPiece(x, y) == null && !board.hasIngredient(x, y))
+            ? new Position(x, y)
+            : null
       }
       x += direction.dx
       y += direction.dy

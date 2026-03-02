@@ -127,6 +127,21 @@ class GravityRefillTest extends Specification {
     !board.hasIngredient(1, 1)
   }
 
+  def 'refill does not place candy under an ingredient'() {
+    given:
+    Board board = new Board(3, 3)
+    board.setIngredient(1, 1, new Ingredient(IngredientType.NUT))
+    board.setCell(1, 2, CandyType.RED)
+    GravityRefill refill = new GravityRefill()
+
+    when:
+    refill.apply(board, uniformWeights(), new Random(42L))
+
+    then:
+    board.hasIngredient(1, 1)
+    board.getPiece(1, 1) == null
+  }
+
   def 'teleporter moves piece to linked destination during gravity'() {
     given:
     Board board = new Board(

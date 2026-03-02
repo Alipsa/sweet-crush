@@ -54,7 +54,7 @@ class Board implements Cloneable {
     if (!isPlayable(x, y)) {
       return
     }
-    cells[y][x] = value == null ? null : Piece.normal(value)
+    setPiece(x, y, value == null ? null : Piece.normal(value))
   }
 
   Piece getPiece(int x, int y) {
@@ -68,6 +68,9 @@ class Board implements Cloneable {
   void setPiece(int x, int y, Piece piece) {
     requireBounds(x, y)
     if (!isPlayable(x, y)) {
+      return
+    }
+    if (piece != null && ingredients[y][x] != null) {
       return
     }
     cells[y][x] = piece
@@ -101,6 +104,9 @@ class Board implements Cloneable {
     requireBounds(x, y)
     if (!isPlayable(x, y)) {
       return
+    }
+    if (ingredient != null) {
+      cells[y][x] = null
     }
     ingredients[y][x] = ingredient
   }

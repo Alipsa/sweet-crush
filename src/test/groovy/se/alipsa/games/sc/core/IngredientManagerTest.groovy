@@ -23,6 +23,7 @@ class IngredientManagerTest extends Specification {
     then:
     board.hasIngredient(2, 0)
     board.getIngredient(2, 0).type == IngredientType.CHERRY
+    board.getPiece(2, 0) == null
   }
 
   def 'collects ingredient at exit cell'() {
