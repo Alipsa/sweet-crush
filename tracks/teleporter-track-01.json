@@ -1,33 +1,30 @@
 {
-  "id": "teleporter-track-01",
-  "name": "Teleporter Link 1",
-  "width": 7,
-  "height": 9,
-  "moves": 26,
-  "targetScore": 1500,
-  "spawnWeights": {
-    "RED": 3,
-    "BLUE": 3,
-    "GREEN": 3,
-    "YELLOW": 2,
-    "PURPLE": 2,
-    "ORANGE": 2
-  },
-  "board": {
-    "mask": [
-      "...#...",
-      "...#...",
-      "...#...",
-      "...#...",
-      ".......",
-      "...#...",
-      "...#...",
-      "...#...",
-      "...#..."
+    "id": "teleporter-track-01",
+    "name": "Teleporter Link 1",
+    "width": 7,
+    "height": 9,
+    "moves": 26,
+    "targetScore": 1500,
+    "scoreColors": [
+        "BLUE",
+        "GREEN",
+        "ORANGE",
+        "PURPLE",
+        "RED",
+        "YELLOW"
     ],
-    "teleporters": [
-      { "from": { "x": 1, "y": 7 }, "to": { "x": 5, "y": 1 } },
-      { "from": { "x": 5, "y": 7 }, "to": { "x": 1, "y": 1 } }
-    ]
-  }
+    "spawnWeights": {
+        "RED": 3,
+        "BLUE": 3,
+        "GREEN": 3,
+        "YELLOW": 2,
+        "PURPLE": 2,
+        "ORANGE": 2
+    },
+    "specialPieces": {
+        "SWEEPER": 3,
+        "SMALL_BOMB": 3,
+        "BOMB": 3,
+        "FISH": 3
+    }
 }
