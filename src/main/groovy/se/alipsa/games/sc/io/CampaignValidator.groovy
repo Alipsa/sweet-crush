@@ -114,7 +114,14 @@ class CampaignValidator {
           return
         }
         try {
-          UnlockType.valueOf(condition.type.toString())
+          UnlockType unlockType = UnlockType.valueOf(condition.type.toString())
+          if (unlockType == UnlockType.STAR_THRESHOLD) {
+            Object threshold = condition.starThreshold
+            if (threshold == null || !(threshold instanceof Number) || ((Number) threshold).intValue() <= 0) {
+              errors << new LoadError(fileName, LoadErrorCode.INVALID_CAMPAIGN,
+                  "Chapter ${chapterIndex}, level ${levelIndex}: STAR_THRESHOLD requires starThreshold > 0")
+            }
+          }
         } catch (IllegalArgumentException ignored) {
           errors << new LoadError(fileName, LoadErrorCode.INVALID_CAMPAIGN,
               "Chapter ${chapterIndex}, level ${levelIndex}: unknown unlockCondition.type '${condition.type}'")

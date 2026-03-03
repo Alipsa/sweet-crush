@@ -40,7 +40,11 @@ class ProgressStore {
       }
 
       Map<String, ?> data = parsed as Map<String, ?>
-      String storedCampaignId = data.campaignId?.toString() ?: campaignId
+      String storedCampaignId = data.campaignId?.toString()?.trim() ?: ''
+      if (!storedCampaignId) {
+        log.info('Progress file has no campaignId — returning empty progress')
+        return new CampaignProgress(campaignId)
+      }
 
       if (storedCampaignId != campaignId) {
         log.info('Progress file is for campaign "{}" but requested "{}". Returning empty progress.',
@@ -92,7 +96,11 @@ class ProgressStore {
 
       Path tmpFile = parentDir.resolve("progress.tmp.${System.currentTimeMillis()}.json")
       Files.writeString(tmpFile, json)
-      Files.move(tmpFile, progressFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+      try {
+        Files.move(tmpFile, progressFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+      } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+        Files.move(tmpFile, progressFile, StandardCopyOption.REPLACE_EXISTING)
+      }
 
       log.debug('Progress saved to {}', progressFile)
     } catch (Exception e) {

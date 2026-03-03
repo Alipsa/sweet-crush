@@ -17,6 +17,10 @@ class CampaignService {
     this.store = store
   }
 
+  Campaign getCampaign() {
+    campaign
+  }
+
   CampaignProgress loadProgress() {
     store.load(campaign.campaignId)
   }

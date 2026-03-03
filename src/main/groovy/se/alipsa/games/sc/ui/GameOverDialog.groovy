@@ -12,8 +12,7 @@ class GameOverDialog {
     RETRY,
     SKIP,
     NEXT_TRACK,
-    RETURN_TO_SELECTION,
-    RETURN_TO_MAP
+    RETURN_TO_SELECTION
   }
 
   static String winMessage() {

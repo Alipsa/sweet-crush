@@ -164,6 +164,24 @@ class CampaignLoaderTest extends Specification {
     result.errors.isEmpty()
   }
 
+  def 'returns error for STAR_THRESHOLD with missing or zero starThreshold'() {
+    given:
+    CampaignLoader loader = new CampaignLoader()
+    Map campaign = validCampaign()
+    campaign.chapters[0].levels[1].unlockCondition = [type: 'STAR_THRESHOLD', starThreshold: threshold]
+    writeCampaign(tempDir.resolve('campaign.json'), campaign)
+
+    when:
+    CampaignLoadResult result = loader.loadCampaign(tempDir, KNOWN_TRACK_IDS)
+
+    then:
+    result.campaign == null
+    result.errors.any { it.code == LoadErrorCode.INVALID_CAMPAIGN && it.message.contains('starThreshold > 0') }
+
+    where:
+    threshold << [0, -1, null]
+  }
+
   def 'parses STAR_THRESHOLD unlock condition with starThreshold'() {
     given:
     CampaignLoader loader = new CampaignLoader()

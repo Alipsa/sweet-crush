@@ -202,6 +202,13 @@ class MainFrame extends JFrame {
     ProgressStore store = new ProgressStore()
     campaignService = new CampaignService(campaign, store)
     campaignProgress = campaignService.loadProgress()
+    currentTrackIndex = -1
+    controlPanel.updateGoal('Select a level from the campaign map')
+    controlPanel.updateObjectives([])
+    controlPanel.updateScore(0)
+    controlPanel.updateMovesLeft(0)
+    controlPanel.updateSpecials([:])
+    boardPanel.updateBoard(null)
     rightPanelCardLayout.show(rightPanel, CARD_CAMPAIGN_MAP)
     refreshCampaignMap(campaign)
   }
@@ -698,7 +705,7 @@ class MainFrame extends JFrame {
           markTrackCompleted(currentTrack.id)
           campaignService.recordWin(currentTrack.id, finalScore, currentTrack.targetScore, campaignProgress)
           gameOverDialog.showForWin(MainFrame.this, currentTrackIndex, currentLoadResult.tracks.size())
-          refreshCampaignMap(campaignService.@campaign)
+          refreshCampaignMap(campaignService.campaign)
           return
         }
 

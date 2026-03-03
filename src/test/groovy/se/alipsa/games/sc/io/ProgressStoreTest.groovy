@@ -130,6 +130,27 @@ class ProgressStoreTest extends Specification {
     progress.levelProgress['track-1'].stars == 3
   }
 
+  def 'load returns empty progress when stored campaignId is null or blank'() {
+    given:
+    Path progressFile = tempDir.resolve('progress.json')
+    Files.writeString(progressFile, json)
+    ProgressStore store = new ProgressStore(progressFile)
+
+    when:
+    CampaignProgress loaded = store.load('my-campaign')
+
+    then:
+    loaded.campaignId == 'my-campaign'
+    loaded.levelProgress.isEmpty()
+
+    where:
+    json << [
+        '{"levels": {}}',
+        '{"campaignId": null, "levels": {}}',
+        '{"campaignId": "  ", "levels": {}}'
+    ]
+  }
+
   def 'load handles non-object JSON gracefully'() {
     given:
     Path progressFile = tempDir.resolve('array.json')
