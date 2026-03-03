@@ -95,12 +95,8 @@ class CampaignLoader {
       type = UnlockType.NONE
     }
     int threshold = 0
-    if (type == UnlockType.STAR_THRESHOLD && conditionMap.containsKey('starThreshold')) {
-      try {
-        threshold = Integer.parseInt(conditionMap.starThreshold.toString())
-      } catch (NumberFormatException ignored) {
-        // defaults to 0
-      }
+    if (type == UnlockType.STAR_THRESHOLD && conditionMap.starThreshold instanceof Number) {
+      threshold = ((Number) conditionMap.starThreshold).intValue()
     }
     new UnlockCondition(type, threshold)
   }

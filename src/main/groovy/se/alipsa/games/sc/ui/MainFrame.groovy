@@ -720,6 +720,14 @@ class MainFrame extends JFrame {
           GameOverDialog.Action action = gameOverDialog.showForLose(MainFrame.this, completed)
           if (action == GameOverDialog.Action.RETRY) {
             restartCurrentTrack()
+          } else {
+            refreshCampaignMap(campaignService.campaign)
+            controlPanel.updateGoal('Select a level from the campaign map')
+            controlPanel.updateObjectives([])
+            controlPanel.updateMovesLeft(0)
+            controlPanel.updateSpecials([:])
+            controlPanel.updateScore(0)
+            boardPanel.updateBoard(null)
           }
           return
         }
