@@ -767,6 +767,33 @@ class MainFrame extends JFrame {
     @Override
     void onReshuffleExhausted() {
       SwingUtilities.invokeLater {
+        if (campaignMode) {
+          String message = 'Unable to continue this level (exhausted all attempts); would you like to restart or return to the campaign map?'
+          Object[] options = ['Restart', 'Campaign Map']
+          int choice = JOptionPane.showOptionDialog(
+              MainFrame.this,
+              message,
+              'Reshuffle Exhausted',
+              JOptionPane.DEFAULT_OPTION,
+              JOptionPane.WARNING_MESSAGE,
+              null,
+              options,
+              options[0]
+          )
+          if (choice == 0) {
+            restartCurrentTrack()
+          } else {
+            refreshCampaignMap(campaignService.campaign)
+            controlPanel.updateGoal('Select a level from the campaign map')
+            controlPanel.updateObjectives([])
+            controlPanel.updateMovesLeft(0)
+            controlPanel.updateSpecials([:])
+            controlPanel.updateScore(0)
+            boardPanel.updateBoard(null)
+          }
+          return
+        }
+
         String message = 'Unable to continue this track (exhausted all attempts); would you like to restart or continue to the next track?'
         Object[] options = ['Restart', 'Next Track']
         int choice = JOptionPane.showOptionDialog(
