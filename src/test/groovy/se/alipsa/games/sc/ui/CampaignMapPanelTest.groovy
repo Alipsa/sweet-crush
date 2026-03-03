@@ -10,7 +10,6 @@ import spock.lang.Specification
 
 import javax.swing.JButton
 import javax.swing.JLabel
-import javax.swing.JPanel
 import java.awt.Component
 
 class CampaignMapPanelTest extends Specification {

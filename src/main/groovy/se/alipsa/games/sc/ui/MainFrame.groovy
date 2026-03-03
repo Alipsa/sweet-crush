@@ -185,6 +185,12 @@ class MainFrame extends JFrame {
 
     if (!campaignResult.errors.isEmpty()) {
       log.warn('Campaign loading errors: {}', campaignResult.errors)
+      String errorDetails = campaignResult.errors.collect { it.toString() }.join('\n')
+      JOptionPane.showMessageDialog(this,
+          "Campaign configuration errors were found in campaign.json.\n" +
+          "Free-play mode will be used instead.\n\nDetails:\n" + errorDetails,
+          'Campaign Configuration Error',
+          JOptionPane.ERROR_MESSAGE)
     }
 
     exitCampaignMode()
