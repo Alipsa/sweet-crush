@@ -230,6 +230,16 @@ This section is the implementation plan for:
 - [x] If a track in not completed, the only option should be to retry, not skip. Skip should only be offered after a track has been completed at least once.
 - [x] brown and yellow have the same icon. THe sword should be on yellow. And the smokey white where the sword used to be should have a cloud icon.
 
+### M10 - Publish
+
+create a publish.sh script that
+
+1. checks that the git repository is clean
+2. pulls the latest distribution files from github workflow actions
+3. scans the git history for changes since last release and creates release notes (keep it brief) in release.md (add ## v[versionnumber], [todays date]), commits and push the file
+4. runs mvn install deploy
+5. create a github release and add the downloaded distributions as binary attachements to the release
+
 #### JSON Schema Changes (Track Schema v2 + Campaign Schema v1)
 
 - [ ] 43. `Track` schema versioning and compatibility:
