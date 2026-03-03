@@ -174,7 +174,7 @@ class BoardResolverTest extends Specification {
     result.groupSizes.first() >= board.width
   }
 
-  def 'does not activate sweeper from forced activation seed without a line match'() {
+  def 'activates sweeper from forced activation seed even without a line match'() {
     given:
     BoardResolver resolver = new BoardResolver(new Random(16L))
     Board board = boardOf([
@@ -183,10 +183,6 @@ class BoardResolverTest extends Specification {
         [CandyType.RED, CandyType.PURPLE, CandyType.ORANGE]
     ])
     board.setPiece(1, 1, Piece.sweeper(CandyType.RED, false))
-    Board before = board.clone()
-
-    expect:
-    resolver.hasLegalSwap(board)
 
     when:
     BoardResolver.CascadeResult result = resolver.resolve(
@@ -198,8 +194,8 @@ class BoardResolverTest extends Specification {
     )
 
     then:
-    result.groupSizes.isEmpty()
-    boardsEqual(before, board)
+    !result.groupSizes.isEmpty()
+    result.groupSizes.first() >= board.height
   }
 
   def 'creates bomb from 5-in-a-row when budget is available'() {

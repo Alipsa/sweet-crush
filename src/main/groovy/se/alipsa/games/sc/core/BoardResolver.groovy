@@ -657,7 +657,7 @@ class BoardResolver {
   }
 
   private static boolean isSwapTriggeredSpecial(Piece piece) {
-    piece?.isSpecial() && piece.specialType != SpecialPieceType.SWEEPER
+    piece?.isSpecial()
   }
 
   private static boolean isSpecialSwapCombo(Piece first, Piece second) {
