@@ -355,7 +355,7 @@ This section is the implementation plan for:
 - [x] M8b: Phase 2 complete (holes/split/irregular board geometry via mask + gravity updates).
 - [x] M8c: Phase 3 complete (one-way tiles + teleporters).
 - [x] M8d: Phase 4 complete (ingredient/drop mode + spawner tiles).
-- [ ] M8e: Phase 5 complete (campaign map + progression persistence).
+- [x] M8e: Phase 5 complete (campaign map + progression persistence).
 - [ ] M8f: Phase 6 complete (balancing/performance/polish).
 - [x] M9: UX polish (persistent track directory, track editing, readability improvements, completion-gated skip).
 ## Definition Of Done (MVP)
