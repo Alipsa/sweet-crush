@@ -210,7 +210,7 @@ class CampaignMapPanel extends JPanel {
       case UnlockType.PREVIOUS_LEVEL_WIN:
         return 'Win the previous level to unlock'
       case UnlockType.STAR_THRESHOLD:
-        return "Earn ${level.unlockCondition.value} total stars to unlock"
+        return "Earn ${level.unlockCondition.starThreshold} total stars to unlock"
       default:
         return 'Locked'
     }

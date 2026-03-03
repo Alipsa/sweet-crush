@@ -119,6 +119,7 @@ class GameEngineTest extends Specification {
 
     then:
     success
+    // groups [3,5,4] with cascade multiplier: 3*10*1.0 + 5*10*1.25 + 4*10*1.5 = 30+63+60 = 153
     engine.score == 153
     engine.movesLeft == 4
   }

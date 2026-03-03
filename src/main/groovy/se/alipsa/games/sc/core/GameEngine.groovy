@@ -403,7 +403,7 @@ class GameEngine implements AutoCloseable, GameSession {
           : [:]
       int baseScore = scoreGroup(groupSize, groupCounts)
       double multiplier = 1.0d + (i * 0.25d)
-      gainedScore += Math.round(baseScore * multiplier)
+      gainedScore += Math.toIntExact(Math.round(baseScore * multiplier))
     }
     return gainedScore
   }
