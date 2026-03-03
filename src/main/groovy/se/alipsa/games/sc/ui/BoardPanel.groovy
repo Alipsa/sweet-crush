@@ -95,9 +95,6 @@ class BoardPanel extends JPanel {
   private final List<SmallBombActivation> pendingSmallBombActivations = []
   private final List<FishSwimActivation> pendingFishSwims = []
   private final List<BombBeamActivation> pendingBombBeams = []
-  private Track markerCacheTrack
-  private Set<Long> spawnCellPositions = Collections.emptySet()
-  private Set<Long> exitCellPositions = Collections.emptySet()
 
   private Runnable moveResolvedCallback
 
@@ -171,9 +168,6 @@ class BoardPanel extends JPanel {
     this.pendingSmallBombActivations.clear()
     this.pendingFishSwims.clear()
     this.pendingBombBeams.clear()
-    this.markerCacheTrack = null
-    this.spawnCellPositions = Collections.emptySet()
-    this.exitCellPositions = Collections.emptySet()
     clearHintState(false)
     clearDragState()
     stopTransitionAnimation()
@@ -596,15 +590,27 @@ class BoardPanel extends JPanel {
     g2.fillOval(bodyX + Math.max(2, bodyW.intdiv(5)), bodyY + Math.max(3, bodyH.intdiv(4)), highlightW, highlightH)
   }
 
+  private transient Track spawnExitCacheTrack
+  private transient Set<Position> spawnCellSet
+  private transient Set<Position> exitCellSet
+
   private void drawSpawnExitMarkers(Graphics2D g2, int x, int y, int left, int top, int cellSize) {
     if (track == null) {
+      spawnExitCacheTrack = null
+      spawnCellSet = null
+      exitCellSet = null
       return
     }
 
-    refreshMarkerCellCache(track)
-    long cellKey = encodePositionKey(x, y)
-    boolean isSpawnCell = spawnCellPositions.contains(cellKey)
-    boolean isExitCell = exitCellPositions.contains(cellKey)
+    if (track !== spawnExitCacheTrack) {
+      spawnExitCacheTrack = track
+      spawnCellSet = track.spawnCells ? new HashSet<>(track.spawnCells) : Collections.emptySet()
+      exitCellSet = track.exitCells ? new HashSet<>(track.exitCells) : Collections.emptySet()
+    }
+
+    Position pos = new Position(x, y)
+    boolean isSpawnCell = spawnCellSet.contains(pos)
+    boolean isExitCell = exitCellSet.contains(pos)
 
     if (!isSpawnCell && !isExitCell) {
       return
@@ -630,32 +636,6 @@ class BoardPanel extends JPanel {
     }
 
     g2.stroke = oldStroke
-  }
-
-  private void refreshMarkerCellCache(Track activeTrack) {
-    if (activeTrack == markerCacheTrack) {
-      return
-    }
-    markerCacheTrack = activeTrack
-    spawnCellPositions = encodePositionSet(activeTrack?.spawnCells)
-    exitCellPositions = encodePositionSet(activeTrack?.exitCells)
-  }
-
-  private static Set<Long> encodePositionSet(List<Position> positions) {
-    if (positions == null || positions.isEmpty()) {
-      return Collections.emptySet()
-    }
-    Set<Long> encoded = new HashSet<>(Math.max(16, positions.size() * 2))
-    positions.each { Position pos ->
-      if (pos != null) {
-        encoded << encodePositionKey(pos.x, pos.y)
-      }
-    }
-    encoded
-  }
-
-  private static long encodePositionKey(int x, int y) {
-    (((long) x) << 32) | (y & 0xffffffffL)
   }
 
   private void drawCandy(Graphics2D g2,

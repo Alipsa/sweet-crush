@@ -27,8 +27,6 @@ class GameEngine implements AutoCloseable, GameSession {
   private final boolean ownsWorker
 
   private final AtomicBoolean resolvingFlag = new AtomicBoolean(false)
-  private final GravityRefill postMoveGravity = new GravityRefill()
-  private final Random postMoveRandom
 
   private volatile GameListener listener
   private volatile Board board
@@ -42,6 +40,8 @@ class GameEngine implements AutoCloseable, GameSession {
   private final Object objectiveLock = new Object()
   private final IngredientManager ingredientManager
   private final SpawnerManager spawnerManager
+  private final GravityRefill gravityRefill
+  private final Random random
 
   GameEngine(Track track,
              Random random = new Random(),
@@ -61,16 +61,8 @@ class GameEngine implements AutoCloseable, GameSession {
              BoardResolver boardResolver,
              MatchFinder matchFinder,
              ExecutorService gameWorker,
-             GameListener listener = null) {
-    this(track, boardResolver, matchFinder, gameWorker, listener, null)
-  }
-
-  GameEngine(Track track,
-             BoardResolver boardResolver,
-             MatchFinder matchFinder,
-             ExecutorService gameWorker,
-             GameListener listener,
-             Random spawnerRandom) {
+             GameListener listener = null,
+             Random random = null) {
     this.track = track
     this.boardResolver = boardResolver
     this.matchFinder = matchFinder
@@ -78,16 +70,17 @@ class GameEngine implements AutoCloseable, GameSession {
     this.ownsWorker = gameWorker == null
     this.listener = listener ?: NO_OP_LISTENER
     this.movesLeft = track.moves
-    this.postMoveRandom = spawnerRandom ?: new Random()
     this.remainingSpecialPieces = new EnumMap<>(track.specialPieces ?: [:])
     this.objectiveStates = (track.objectives ?: []).collect { Objective objective ->
       new ObjectiveProgressState(objective)
     }
+    this.gravityRefill = new GravityRefill()
+    this.random = random ?: new Random()
     this.ingredientManager = track.hasIngredients()
         ? new IngredientManager(track.ingredientConfig, track.spawnCells, track.exitCells)
         : null
     this.spawnerManager = track.hasSpawners()
-        ? new SpawnerManager(track.spawners, postMoveRandom)
+        ? new SpawnerManager(track.spawners, this.random)
         : null
     this.board = boardResolver.createInitialBoard(track, this.listener)
     this.currentBoardSnapshot = this.board?.clone()
@@ -262,7 +255,7 @@ class GameEngine implements AutoCloseable, GameSession {
       }
     }
     if (ingredientManager != null || spawnerManager != null) {
-      postMoveGravity.apply(board, track.spawnWeights, postMoveRandom)
+      gravityRefill.apply(board, track.spawnWeights, random)
     }
 
     listener.onBoardUpdated(board.clone())

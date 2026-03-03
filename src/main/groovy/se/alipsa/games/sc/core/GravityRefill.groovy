@@ -11,6 +11,8 @@ class GravityRefill {
     Map<CandyType, Integer> effectiveWeights = normalizeWeights(spawnWeights)
     applyWithoutRefill(board)
     applyIngredientGravity(board)
+    // Re-run piece gravity so candies fall into cells vacated by ingredient movement
+    applyWithoutRefill(board)
     refillEmptyCells(board, effectiveWeights, random)
   }
 

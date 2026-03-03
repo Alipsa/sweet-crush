@@ -131,7 +131,8 @@ class Track {
 
     List<Position> spawnCells = null
     List<Position> exitCells = null
-    if (ingredientConfig != null && ingredientConfig.enabled && boardConfig != null) {
+    boolean ingredientsEnabled = ingredientConfig != null && ingredientConfig.enabled
+    if (ingredientsEnabled && boardConfig != null) {
       if (boardConfig.containsKey('spawnCells') && boardConfig.spawnCells != null) {
         spawnCells = parsePositionList(boardConfig.spawnCells as Collection<?>)
       }
@@ -445,14 +446,12 @@ class Track {
     int spawnEveryTurns = 1
     List<IngredientQueueEntry> queue = []
     if (enabled) {
-      if (raw.containsKey('spawnEveryTurns')) {
-        spawnEveryTurns = requireInteger(raw.spawnEveryTurns, 'ingredients.spawnEveryTurns')
-      }
+      spawnEveryTurns = raw.containsKey('spawnEveryTurns') ? toInt(raw.spawnEveryTurns, 1) : 1
       if (raw.containsKey('queue') && raw.queue instanceof Collection) {
         (raw.queue as Collection<?>).each { Object item ->
           Map<?, ?> entry = item as Map<?, ?>
           IngredientType type = IngredientType.valueOf(entry.type.toString())
-          int count = requireInteger(entry.count, 'ingredients.queue.count')
+          int count = toInt(entry.count, 0)
           queue << new IngredientQueueEntry(type, count)
         }
       }
@@ -467,8 +466,8 @@ class Track {
     List<Position> positions = []
     rawPositions.each { Object item ->
       Map<?, ?> entry = item as Map<?, ?>
-      int x = requireInteger(entry.x, 'position.x')
-      int y = requireInteger(entry.y, 'position.y')
+      int x = toInt(entry.x, 0)
+      int y = toInt(entry.y, 0)
       positions << new Position(x, y)
     }
     positions
@@ -481,10 +480,10 @@ class Track {
     List<SpawnerConfig> spawners = []
     rawSpawners.each { Object item ->
       Map<?, ?> entry = item as Map<?, ?>
-      int x = requireInteger(entry.x, 'spawners.x')
-      int y = requireInteger(entry.y, 'spawners.y')
-      int everyTurns = requireInteger(entry.everyTurns, 'spawners.everyTurns')
-      int maxActive = requireInteger(entry.maxActive, 'spawners.maxActive')
+      int x = toInt(entry.x, 0)
+      int y = toInt(entry.y, 0)
+      int everyTurns = toInt(entry.everyTurns, 1)
+      int maxActive = toInt(entry.maxActive, 1)
       List<SpawnTableEntry> table = []
       if (entry.containsKey('table') && entry.table instanceof Collection) {
         (entry.table as Collection<?>).each { Object tableItem ->
@@ -493,9 +492,9 @@ class Track {
           String type = tableEntry.type?.toString()
           int layers = 1
           if (kind == SpawnKind.BLOCKER && tableEntry.containsKey('layers')) {
-            layers = integerOrDefault(tableEntry.layers, 1)
+            layers = toInt(tableEntry.layers, 1)
           }
-          int weight = requireInteger(tableEntry.weight, 'spawners.table.weight')
+          int weight = toInt(tableEntry.weight, 1)
           table << new SpawnTableEntry(kind, type, layers, weight)
         }
       }
@@ -504,30 +503,17 @@ class Track {
     spawners
   }
 
-  private static int requireInteger(Object value, String fieldName) {
-    Integer parsed = tryParseInteger(value)
-    if (parsed == null) {
-      throw new IllegalArgumentException("${fieldName} must be an integer")
-    }
-    parsed
-  }
-
-  private static int integerOrDefault(Object value, int defaultValue) {
-    Integer parsed = tryParseInteger(value)
-    parsed == null ? defaultValue : parsed
-  }
-
-  private static Integer tryParseInteger(Object value) {
+  private static int toInt(Object value, int defaultValue) {
     if (value == null) {
-      return null
+      return defaultValue
     }
     if (value instanceof Number) {
       return ((Number) value).intValue()
     }
-    String text = value.toString()
-    if (text.isInteger()) {
-      return Integer.parseInt(text)
+    try {
+      return Integer.parseInt(value.toString())
+    } catch (NumberFormatException ignored) {
+      return defaultValue
     }
-    null
   }
 }

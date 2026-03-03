@@ -114,7 +114,7 @@ class SpawnerManagerTest extends Specification {
     board.getPiece(1, 1).specialType == SpecialPieceType.FISH
   }
 
-  def 'counts moved spawned specials towards maxActive'() {
+  def 'allows respawn when special moves away from spawner cell (occupancy-based)'() {
     given:
     SpawnerConfig config = new SpawnerConfig(
         new Position(1, 1),
@@ -132,28 +132,19 @@ class SpawnerManagerTest extends Specification {
     board.setPiece(2, 2, firstSpecial)
     board.setCell(1, 1, CandyType.RED)
 
-    and: 'second special spawns and is also moved away'
+    and: 'second special spawns because spawner cell is now a regular candy'
     List<SpawnerManager.SpawnEvent> second = manager.processAfterMove(board)
-    Piece secondSpecial = board.getPiece(1, 1)
-    board.setPiece(0, 2, secondSpecial)
-    board.setCell(1, 1, CandyType.BLUE)
-
-    and: 'third attempt is blocked by maxActive despite empty spawner cell'
-    List<SpawnerManager.SpawnEvent> blocked = manager.processAfterMove(board)
 
     then:
     first.size() == 1
     second.size() == 1
-    blocked.isEmpty()
-    !board.getPiece(1, 1).isSpecial()
+    board.getPiece(1, 1).isSpecial()
 
-    when: 'one moved spawned special is removed from board'
-    board.setCell(2, 2, CandyType.GREEN)
-    List<SpawnerManager.SpawnEvent> resumed = manager.processAfterMove(board)
+    when: 'spawner cell still has special, so next spawn is blocked by occupancy'
+    List<SpawnerManager.SpawnEvent> blocked = manager.processAfterMove(board)
 
     then:
-    resumed.size() == 1
-    board.getPiece(1, 1).isSpecial()
+    blocked.isEmpty()
   }
 
   def 'does not spawn blocker when cell already has blocker'() {

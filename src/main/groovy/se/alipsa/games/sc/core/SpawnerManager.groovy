@@ -9,20 +9,17 @@ class SpawnerManager {
   private final List<SpawnerConfig> spawners
   private final Random random
   private final Map<Position, Integer> turnCounters = [:]
-  private final Map<Position, List<SpawnRecord>> activeSpawns = [:]
 
   SpawnerManager(List<SpawnerConfig> spawners, Random random) {
     this.spawners = spawners ?: []
     this.random = random ?: new Random()
     this.spawners.each { SpawnerConfig config ->
       turnCounters[config.position] = 0
-      activeSpawns[config.position] = []
     }
   }
 
   List<SpawnEvent> processAfterMove(Board board) {
     List<SpawnEvent> events = []
-    Set<Piece> activeSpecialPieces = collectActiveSpecialPieces(board)
     spawners.each { SpawnerConfig config ->
       Position pos = config.position
       int counter = (turnCounters[pos] ?: 0) + 1
@@ -32,15 +29,12 @@ class SpawnerManager {
         return
       }
 
-      List<SpawnRecord> records = activeSpawns.getOrDefault(pos, [])
-      records = records.findAll { SpawnRecord record -> isStillActive(board, record, activeSpecialPieces) }
-      activeSpawns[pos] = records
-
-      if (records.size() >= config.maxActive) {
+      if (!board.inBounds(pos.x, pos.y) || !board.isPlayable(pos.x, pos.y)) {
         return
       }
 
-      if (!board.inBounds(pos.x, pos.y) || !board.isPlayable(pos.x, pos.y)) {
+      // Occupancy-based guard: check if spawner cell already has the entity type it spawns
+      if (isOccupiedBySpawnedEntity(board, pos)) {
         return
       }
 
@@ -49,41 +43,24 @@ class SpawnerManager {
         return
       }
 
-      SpawnResult result = applySpawn(board, pos, selected)
-      if (result != null) {
-        records << result.record
-        events << result.event
+      SpawnEvent event = applySpawn(board, pos, selected)
+      if (event != null) {
+        events << event
       }
     }
     events
   }
 
-  private static boolean isStillActive(Board board, SpawnRecord record, Set<Piece> activeSpecialPieces) {
-    if (!board.inBounds(record.position.x, record.position.y)) {
-      return false
+  /**
+   * Checks if the spawner cell is occupied by a blocker or special piece,
+   * which would prevent a new spawn at this position.
+   */
+  private static boolean isOccupiedBySpawnedEntity(Board board, Position pos) {
+    if (board.getBlocker(pos.x, pos.y) != null) {
+      return true
     }
-    if (record.kind == SpawnKind.BLOCKER) {
-      return board.getBlocker(record.position.x, record.position.y) != null
-    } else if (record.kind == SpawnKind.SPECIAL) {
-      return record.spawnedPiece != null && activeSpecialPieces.contains(record.spawnedPiece)
-    }
-    false
-  }
-
-  private static Set<Piece> collectActiveSpecialPieces(Board board) {
-    Set<Piece> active = Collections.newSetFromMap(new IdentityHashMap<Piece, Boolean>())
-    for (int y = 0; y < board.height; y++) {
-      for (int x = 0; x < board.width; x++) {
-        if (!board.isPlayable(x, y)) {
-          continue
-        }
-        Piece piece = board.getPiece(x, y)
-        if (piece != null && piece.isSpecial()) {
-          active.add(piece)
-        }
-      }
-    }
-    active
+    Piece piece = board.getPiece(pos.x, pos.y)
+    return piece != null && piece.isSpecial()
   }
 
   private SpawnTableEntry selectWeighted(List<SpawnTableEntry> table) {
@@ -107,17 +84,14 @@ class SpawnerManager {
     table.last()
   }
 
-  private static SpawnResult applySpawn(Board board, Position pos, SpawnTableEntry entry) {
+  private static SpawnEvent applySpawn(Board board, Position pos, SpawnTableEntry entry) {
     if (entry.kind == SpawnKind.BLOCKER) {
       if (board.getBlocker(pos.x, pos.y) != null) {
         return null
       }
       BlockerType blockerType = BlockerType.valueOf(entry.type)
       board.setBlocker(pos.x, pos.y, new Blocker(blockerType, entry.layers))
-      return new SpawnResult(
-          new SpawnEvent(pos, entry.kind, entry.type),
-          SpawnRecord.blocker(pos)
-      )
+      return new SpawnEvent(pos, entry.kind, entry.type)
     } else if (entry.kind == SpawnKind.SPECIAL) {
       Piece existing = board.getPiece(pos.x, pos.y)
       if (existing == null || existing.isSpecial()) {
@@ -142,42 +116,9 @@ class SpawnerManager {
           return null
       }
       board.setPiece(pos.x, pos.y, specialPiece)
-      return new SpawnResult(
-          new SpawnEvent(pos, entry.kind, entry.type),
-          SpawnRecord.special(pos, specialPiece)
-      )
+      return new SpawnEvent(pos, entry.kind, entry.type)
     }
     null
-  }
-
-  private static final class SpawnRecord {
-    final Position position
-    final SpawnKind kind
-    final Piece spawnedPiece
-
-    private SpawnRecord(Position position, SpawnKind kind, Piece spawnedPiece = null) {
-      this.position = position
-      this.kind = kind
-      this.spawnedPiece = spawnedPiece
-    }
-
-    static SpawnRecord blocker(Position position) {
-      new SpawnRecord(position, SpawnKind.BLOCKER)
-    }
-
-    static SpawnRecord special(Position position, Piece spawnedPiece) {
-      new SpawnRecord(position, SpawnKind.SPECIAL, spawnedPiece)
-    }
-  }
-
-  private static final class SpawnResult {
-    final SpawnEvent event
-    final SpawnRecord record
-
-    SpawnResult(SpawnEvent event, SpawnRecord record) {
-      this.event = event
-      this.record = record
-    }
   }
 
   static final class SpawnEvent {
