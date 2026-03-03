@@ -30,7 +30,6 @@ class CampaignMapPanel extends JPanel {
   private static final Color BUTTON_BACKGROUND = new Color(0x5A5A5A)
   private static final Color LOCKED_COLOR = new Color(0x808080)
   private static final Color STAR_FILLED = new Color(0xFFD700)
-  private static final Color STAR_EMPTY = new Color(0x555555)
   private static final Color CHAPTER_HEADER_BG = new Color(0x404040)
 
   private final Consumer<String> onLevelSelected

@@ -706,6 +706,11 @@ class MainFrame extends JFrame {
           campaignService.recordWin(currentTrack.id, finalScore, currentTrack.targetScore, campaignProgress)
           gameOverDialog.showForWin(MainFrame.this, currentTrackIndex, currentLoadResult.tracks.size())
           refreshCampaignMap(campaignService.campaign)
+          controlPanel.updateGoal('Select a level from the campaign map')
+          controlPanel.updateObjectives([])
+          controlPanel.updateMovesLeft(0)
+          controlPanel.updateSpecials([:])
+          boardPanel.updateBoard(null)
           return
         }
 

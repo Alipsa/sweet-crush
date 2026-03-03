@@ -97,9 +97,13 @@ class ProgressStore {
       Path tmpFile = parentDir.resolve("progress.tmp.${System.currentTimeMillis()}.json")
       Files.writeString(tmpFile, json)
       try {
-        Files.move(tmpFile, progressFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-      } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
-        Files.move(tmpFile, progressFile, StandardCopyOption.REPLACE_EXISTING)
+        try {
+          Files.move(tmpFile, progressFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+          Files.move(tmpFile, progressFile, StandardCopyOption.REPLACE_EXISTING)
+        }
+      } finally {
+        try { Files.deleteIfExists(tmpFile) } catch (IOException ignored) {}
       }
 
       log.debug('Progress saved to {}', progressFile)

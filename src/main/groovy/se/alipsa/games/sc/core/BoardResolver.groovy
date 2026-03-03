@@ -676,32 +676,6 @@ class BoardResolver {
     piece?.isSpecial()
   }
 
-  private static boolean isPartOfLineMatch(Board board, Position pos, CandyType color) {
-    if (board == null || pos == null || color == null || !board.inBounds(pos.x, pos.y)) {
-      return false
-    }
-
-    int horizontal = 1 + countContiguous(board, pos, color, -1, 0) + countContiguous(board, pos, color, 1, 0)
-    if (horizontal >= 3) {
-      return true
-    }
-
-    int vertical = 1 + countContiguous(board, pos, color, 0, -1) + countContiguous(board, pos, color, 0, 1)
-    return vertical >= 3
-  }
-
-  private static int countContiguous(Board board, Position origin, CandyType color, int dx, int dy) {
-    int count = 0
-    int x = origin.x + dx
-    int y = origin.y + dy
-    while (board.inBounds(x, y) && board.getCell(x, y) == color) {
-      count++
-      x += dx
-      y += dy
-    }
-    count
-  }
-
   private static List<Position> bombTargets(Position origin, Board board) {
     List<Position> targets = []
     for (int dy = -1; dy <= 1; dy++) {
