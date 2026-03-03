@@ -325,7 +325,7 @@ This section is the implementation plan for:
   - Add ingredient/drop mode (`CHERRY`, `NUT`) and exit cells.
   - Add spawner tiles for blockers and specials.
   - Exit criteria: ingredient and spawner interaction tests green with specials enabled.
-- [ ] Phase 5: `M8e`
+- [x] Phase 5: `M8e`
   - Add campaign map (`campaign.json`) with chapters, themes, unlock rules, and progress persistence.
   - Exit criteria: complete chapter flow from locked start to unlock progression.
 - [ ] Phase 6 (Polish/Balancing): `M8f`
