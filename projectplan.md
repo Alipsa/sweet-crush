@@ -367,12 +367,9 @@ This section is the implementation plan for:
 - [ ] Core engine and loader are covered by automated tests.
 - [ ] Board start-state has no pre-existing matches, and gameplay never remains in a dead-board state.
 - [ ] When reshuffle retries are exhausted (100 attempts × 5 seeds), the player is prompted to restart or skip.
-- [ ] On lose, the player can retry the track or skip to the next one.
+- [ ] On lose, the player can retry the track.
 - [ ] UI remains responsive during cascade resolution by running game logic off the EDT.
 
 ## Out of Scope (MVP)
-- Special candy types (striped, wrapped, color bomb).
-- Animations or timed transitions.
-- Persistent high scores or save state.
 - Sound effects.
 - Networked or online multiplayer.
