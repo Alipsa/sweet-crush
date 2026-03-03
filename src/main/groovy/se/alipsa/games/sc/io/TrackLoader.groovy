@@ -32,7 +32,11 @@ class TrackLoader {
     List<Path> trackFiles
     try (Stream<Path> pathStream = Files.list(directory)) {
       trackFiles = pathStream
-          .filter { Path path -> Files.isRegularFile(path) && path.fileName.toString().toLowerCase(Locale.ROOT).endsWith('.json') }
+          .filter { Path path ->
+            Files.isRegularFile(path) &&
+                path.fileName.toString().toLowerCase(Locale.ROOT).endsWith('.json') &&
+                !path.fileName.toString().equalsIgnoreCase('campaign.json')
+          }
           .sorted(fileComparator())
           .toList()
     }

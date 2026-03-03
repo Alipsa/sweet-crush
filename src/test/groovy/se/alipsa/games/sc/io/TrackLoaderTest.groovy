@@ -312,6 +312,24 @@ class TrackLoaderTest extends Specification {
     track.spawners[0].table[0].weight == 5
   }
 
+  def 'campaign.json in the track directory is not loaded as a track'() {
+    given:
+    TrackLoader loader = new TrackLoader()
+    writeTrack(tempDir.resolve('classic-01.json'), [id: 'classic-01', name: 'Classic'])
+    Files.writeString(tempDir.resolve('campaign.json'), JsonOutput.prettyPrint(JsonOutput.toJson([
+        campaignId: 'test', name: 'Test Campaign',
+        chapters: [[id: 'ch1', name: 'Ch 1', levels: [[trackId: 'classic-01', unlockCondition: [type: 'NONE']]]]]
+    ])))
+
+    when:
+    LoadResult result = loader.loadTracks(tempDir)
+
+    then:
+    result.tracks.size() == 1
+    result.tracks[0].id == 'classic-01'
+    result.errors.isEmpty()
+  }
+
   private void writeTrack(Path path, Map overrides = [:]) {
     Map<String, Object> base = [
         id         : 'classic-01',
