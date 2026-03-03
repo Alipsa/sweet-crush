@@ -119,7 +119,7 @@ class GameEngineTest extends Specification {
 
     then:
     success
-    engine.score == (3 + 5 + 4) * 10
+    engine.score == 153
     engine.movesLeft == 4
   }
 

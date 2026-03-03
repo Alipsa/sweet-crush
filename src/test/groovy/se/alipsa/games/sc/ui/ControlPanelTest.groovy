@@ -108,6 +108,22 @@ class ControlPanelTest extends Specification {
     panel.objectivesText.contains('Clear blockers: 0/3')
   }
 
+  def 'buttons and special labels have tooltips'() {
+    given:
+    ControlPanel panel = new ControlPanel()
+
+    expect:
+    panel.@hintButton.toolTipText != null
+    panel.@restartButton.toolTipText != null
+    panel.@boardDebugButton.toolTipText != null
+    panel.@scoreLabel.toolTipText != null
+    panel.@movesLabel.toolTipText != null
+    panel.@sweeperLabel.toolTipText != null
+    panel.@smallBombLabel.toolTipText != null
+    panel.@bombLabel.toolTipText != null
+    panel.@fishLabel.toolTipText != null
+  }
+
   def 'emphasizes specials size when remaining counts change after initialization'() {
     given:
     ControlPanel panel = new ControlPanel()

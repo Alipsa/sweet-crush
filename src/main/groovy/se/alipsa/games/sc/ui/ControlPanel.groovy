@@ -105,6 +105,16 @@ class ControlPanel extends JPanel {
     }
 
     updateGoal(currentGoalText)
+
+    hintButton.toolTipText = 'Highlight a valid swap on the board'
+    restartButton.toolTipText = 'Restart the current level from scratch'
+    boardDebugButton.toolTipText = 'Log previous and current board states to the console'
+    scoreLabel.toolTipText = 'Points earned so far this level'
+    movesLabel.toolTipText = 'Remaining swap moves before the level ends'
+    sweeperLabel.toolTipText = 'Match 4 in a row to create; clears an entire row or column'
+    smallBombLabel.toolTipText = 'Match in a T or L shape to create; clears the 4 adjacent cells'
+    bombLabel.toolTipText = 'Match 5 in a row to create; clears all candies of one color'
+    fishLabel.toolTipText = 'Match a 2x2 square to create; swims to and clears a random target'
   }
 
   void updateGoal(String goalText) {

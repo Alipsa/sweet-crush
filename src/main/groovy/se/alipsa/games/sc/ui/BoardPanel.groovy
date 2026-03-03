@@ -20,6 +20,7 @@ import javax.imageio.ImageIO
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
 import javax.swing.Timer
+import javax.swing.ToolTipManager
 import java.awt.AlphaComposite
 import java.awt.Color
 import java.awt.Composite
@@ -155,6 +156,56 @@ class BoardPanel extends JPanel {
         repaint()
       }
     })
+
+    ToolTipManager.sharedInstance().registerComponent(this)
+  }
+
+  @Override
+  String getToolTipText(MouseEvent event) {
+    if (board == null || visualAnimationRunning) {
+      return null
+    }
+
+    Position cell = resolveBoardCell(event.x, event.y)
+    if (cell == null) {
+      return null
+    }
+
+    List<String> parts = []
+
+    Piece piece = board.getPiece(cell.x, cell.y)
+    if (piece != null) {
+      String desc = piece.color?.name() ?: 'Unknown'
+      if (piece.isSpecial()) {
+        desc += " ${formatSpecialType(piece.specialType)}"
+        if (piece.specialType == SpecialPieceType.SWEEPER) {
+          desc += piece.sweeperHorizontal ? ' (horizontal)' : ' (vertical)'
+        }
+      }
+      parts << desc
+    }
+
+    Blocker blocker = board.getBlocker(cell.x, cell.y)
+    if (blocker != null) {
+      parts << "${blocker.type.name()} blocker (${blocker.layers} layer${blocker.layers == 1 ? '' : 's'})"
+    }
+
+    Ingredient ingredient = board.getIngredient(cell.x, cell.y)
+    if (ingredient != null) {
+      parts << "Ingredient: ${ingredient.type.name()}"
+    }
+
+    FlowDirection flow = board.flowDirectionAt(cell.x, cell.y)
+    if (flow != null) {
+      parts << "One-way: ${flow.name()}"
+    }
+
+    Position teleportTarget = board.teleporterTargetAt(cell.x, cell.y)
+    if (teleportTarget != null) {
+      parts << "Teleporter to (${teleportTarget.x}, ${teleportTarget.y})"
+    }
+
+    parts.isEmpty() ? null : parts.join(' | ')
   }
 
   void setGame(Track track, GameSession engine) {
@@ -343,6 +394,7 @@ class BoardPanel extends JPanel {
 
     Graphics2D g2 = (Graphics2D) graphics.create()
     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+    g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
 
     int cellSize = computeCellSize(getWidth(), getHeight())
     int offsetX = boardOffsetX(getWidth(), getHeight())
@@ -1823,6 +1875,16 @@ class BoardPanel extends JPanel {
       this.originY = originY
       this.targetX = targetX
       this.targetY = targetY
+    }
+  }
+
+  private static String formatSpecialType(SpecialPieceType type) {
+    switch (type) {
+      case SpecialPieceType.SWEEPER: return 'Sweeper'
+      case SpecialPieceType.SMALL_BOMB: return 'Small Bomb'
+      case SpecialPieceType.BOMB: return 'Bomb'
+      case SpecialPieceType.FISH: return 'Fish'
+      default: return type.name()
     }
   }
 

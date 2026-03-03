@@ -75,6 +75,31 @@ class CampaignMapPanelTest extends Specification {
     !starLabels.isEmpty()
   }
 
+  def 'level buttons and locked labels have tooltips'() {
+    given:
+    CampaignMapPanel panel = new CampaignMapPanel({ String trackId -> })
+    Campaign campaign = buildCampaign()
+    CampaignProgress progress = new CampaignProgress('test')
+    Map<String, String> trackNames = ['track-1': 'First Track', 'track-2': 'Second Track']
+
+    when: 'first level unlocked, second locked'
+    panel.refresh(campaign, progress, { level, prog ->
+      level.trackId == 'track-1'
+    }, trackNames)
+
+    then: 'unlocked level button has tooltip with track name'
+    List<JButton> buttons = findLevelButtons(panel)
+    buttons.size() == 1
+    buttons[0].toolTipText?.contains('First Track')
+
+    and: 'locked level label has unlock requirement tooltip'
+    List<JLabel> lockedLabels = findAllLabels(panel).findAll { JLabel l ->
+      l.text?.contains('Level 2') && l.text?.contains('\uD83D\uDD12')
+    }
+    lockedLabels.size() == 1
+    lockedLabels[0].toolTipText?.contains('previous level')
+  }
+
   def 'refresh with null campaign clears panel'() {
     given:
     CampaignMapPanel panel = new CampaignMapPanel({ String trackId -> })

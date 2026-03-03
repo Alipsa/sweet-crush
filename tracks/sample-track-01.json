@@ -4,7 +4,7 @@
   "width": 7,
   "height": 9,
   "moves": 25,
-  "targetScore": 1500,
+  "targetScore": 1600,
   "specialPieces": {
     "SWEEPER": 5,
     "SMALL_BOMB": 5,

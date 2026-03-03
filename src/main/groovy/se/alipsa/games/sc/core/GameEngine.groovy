@@ -401,7 +401,9 @@ class GameEngine implements AutoCloseable, GameSession {
       Map<CandyType, Integer> groupCounts = i < cascadeResult.groupCandyCounts.size()
           ? cascadeResult.groupCandyCounts[i]
           : [:]
-      gainedScore += scoreGroup(groupSize, groupCounts)
+      int baseScore = scoreGroup(groupSize, groupCounts)
+      double multiplier = 1.0d + (i * 0.25d)
+      gainedScore += Math.round(baseScore * multiplier)
     }
     return gainedScore
   }

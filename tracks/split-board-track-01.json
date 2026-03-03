@@ -4,7 +4,7 @@
   "width": 9,
   "height": 9,
   "moves": 30,
-  "targetScore": 1800,
+  "targetScore": 1900,
   "spawnWeights": {
     "RED": 3,
     "BLUE": 3,

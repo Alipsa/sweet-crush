@@ -3,8 +3,8 @@
   "name": "Spawner Level 1",
   "width": 7,
   "height": 9,
-  "moves": 25,
-  "targetScore": 2000,
+  "moves": 27,
+  "targetScore": 1700,
   "specialPieces": {
     "SWEEPER": 5,
     "SMALL_BOMB": 5,
