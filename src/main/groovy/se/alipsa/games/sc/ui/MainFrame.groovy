@@ -89,6 +89,8 @@ class MainFrame extends JFrame {
   private CampaignService campaignService
   private CampaignProgress campaignProgress
   private boolean campaignMode = false
+  private Campaign loadedCampaign
+  private JButton modeToggleButton
 
   MainFrame() {
     super('Sweet Crush')
@@ -114,9 +116,14 @@ class MainFrame extends JFrame {
     rightPanel.add(campaignMapPanel, CARD_CAMPAIGN_MAP)
     rightPanelCardLayout.show(rightPanel, CARD_TRACK_LIST)
 
+    JPanel rightWrapper = new JPanel(new BorderLayout())
+    rightWrapper.background = PANEL_BACKGROUND
+    rightWrapper.add(rightPanel, BorderLayout.CENTER)
+    rightWrapper.add(buildTrackActionButtons(), BorderLayout.SOUTH)
+
     add(controlPanel, BorderLayout.WEST)
     add(boardPanel, BorderLayout.CENTER)
-    add(rightPanel, BorderLayout.EAST)
+    add(rightWrapper, BorderLayout.EAST)
 
     addWindowListener(new WindowAdapter() {
       @Override
@@ -165,6 +172,7 @@ class MainFrame extends JFrame {
       campaignMode = false
       campaignService = null
       campaignProgress = null
+      loadedCampaign = null
       rightPanelCardLayout.show(rightPanel, CARD_TRACK_LIST)
       controlPanel.updateGoal('Choose a track to start')
       controlPanel.updateObjectives([])
@@ -172,6 +180,7 @@ class MainFrame extends JFrame {
       controlPanel.updateMovesLeft(0)
       controlPanel.updateSpecials([:])
       boardPanel.updateBoard(null)
+      updateModeToggleButton()
       return
     }
 
@@ -193,6 +202,9 @@ class MainFrame extends JFrame {
           JOptionPane.ERROR_MESSAGE)
     }
 
+    loadedCampaign = null
+    campaignService = null
+    campaignProgress = null
     exitCampaignMode()
 
     int initialIndex = 0
@@ -205,6 +217,7 @@ class MainFrame extends JFrame {
   private void enterCampaignMode(Campaign campaign) {
     log.info('Entering campaign mode: {}', campaign.name)
     campaignMode = true
+    loadedCampaign = campaign
     ProgressStore store = new ProgressStore()
     campaignService = new CampaignService(campaign, store)
     campaignProgress = campaignService.loadProgress()
@@ -217,13 +230,45 @@ class MainFrame extends JFrame {
     boardPanel.updateBoard(null)
     rightPanelCardLayout.show(rightPanel, CARD_CAMPAIGN_MAP)
     refreshCampaignMap(campaign)
+    updateModeToggleButton()
   }
 
   private void exitCampaignMode() {
     campaignMode = false
-    campaignService = null
-    campaignProgress = null
     rightPanelCardLayout.show(rightPanel, CARD_TRACK_LIST)
+    updateModeToggleButton()
+  }
+
+  private void toggleMode() {
+    if (campaignMode) {
+      campaignMode = false
+      rightPanelCardLayout.show(rightPanel, CARD_TRACK_LIST)
+      if (!currentLoadResult.tracks.isEmpty()) {
+        int index = currentTrackIndex >= 0 && currentTrackIndex < currentLoadResult.tracks.size()
+            ? currentTrackIndex : 0
+        startTrack(currentLoadResult.tracks[index] as Track, index)
+      }
+    } else if (loadedCampaign != null) {
+      campaignMode = true
+      rightPanelCardLayout.show(rightPanel, CARD_CAMPAIGN_MAP)
+      refreshCampaignMap(loadedCampaign)
+      currentTrackIndex = -1
+      controlPanel.updateGoal('Select a level from the campaign map')
+      controlPanel.updateObjectives([])
+      controlPanel.updateScore(0)
+      controlPanel.updateMovesLeft(0)
+      controlPanel.updateSpecials([:])
+      boardPanel.updateBoard(null)
+    }
+    updateModeToggleButton()
+  }
+
+  private void updateModeToggleButton() {
+    if (modeToggleButton == null) {
+      return
+    }
+    modeToggleButton.enabled = loadedCampaign != null
+    modeToggleButton.text = campaignMode ? 'Free Play' : 'Campaign Map'
   }
 
   private void refreshCampaignMap(Campaign campaign) {
@@ -459,21 +504,38 @@ class MainFrame extends JFrame {
     trackScroll.viewport.background = LIST_BACKGROUND
     trackScroll.background = PANEL_BACKGROUND
     panel.add(trackScroll, BorderLayout.CENTER)
+
+    panel
+  }
+
+  private JPanel buildTrackActionButtons() {
     chooseTrackFolderButton.addActionListener { chooseTrackFolder() }
     createTrackButton.addActionListener { createTrackInCurrentDirectory() }
     editTrackButton.addActionListener { editCurrentTrack() }
 
-    JPanel actions = new JPanel(new GridLayout(1, 3, 6, 0))
-    actions.background = PANEL_BACKGROUND
+    JPanel topRow = new JPanel(new GridLayout(1, 3, 6, 0))
+    topRow.background = PANEL_BACKGROUND
     styleTrackActionButton(chooseTrackFolderButton)
     styleTrackActionButton(createTrackButton)
     styleTrackActionButton(editTrackButton)
-    actions.add(chooseTrackFolderButton)
-    actions.add(createTrackButton)
-    actions.add(editTrackButton)
+    topRow.add(chooseTrackFolderButton)
+    topRow.add(createTrackButton)
+    topRow.add(editTrackButton)
 
-    panel.add(actions, BorderLayout.SOUTH)
-    panel
+    modeToggleButton = new JButton('Campaign Map')
+    modeToggleButton.enabled = false
+    styleTrackActionButton(modeToggleButton)
+    modeToggleButton.addActionListener { toggleMode() }
+
+    JPanel bottomRow = new JPanel(new GridLayout(1, 1))
+    bottomRow.background = PANEL_BACKGROUND
+    bottomRow.add(modeToggleButton)
+
+    JPanel actions = new JPanel(new GridLayout(2, 1, 0, 4))
+    actions.background = PANEL_BACKGROUND
+    actions.add(topRow)
+    actions.add(bottomRow)
+    actions
   }
 
   private static void styleTrackActionButton(JButton button) {
