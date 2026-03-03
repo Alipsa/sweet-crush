@@ -673,13 +673,7 @@ class BoardResolver {
   }
 
   private static boolean canActivateFromMatch(Board board, Piece piece, Position pos) {
-    if (!(piece?.isSpecial())) {
-      return false
-    }
-    if (piece.specialType != SpecialPieceType.SWEEPER) {
-      return true
-    }
-    return isPartOfLineMatch(board, pos, piece.color)
+    piece?.isSpecial()
   }
 
   private static boolean isPartOfLineMatch(Board board, Position pos, CandyType color) {
