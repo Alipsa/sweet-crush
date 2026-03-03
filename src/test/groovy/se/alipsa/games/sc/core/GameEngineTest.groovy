@@ -176,7 +176,7 @@ class GameEngineTest extends Specification {
     resolver.lastSpecialSwapCombo.secondPiece?.isSpecial()
   }
 
-  def 'allows swap with sweeper even when swap does not create a match'() {
+  def 'rejects swap with sweeper when swap does not create a match'() {
     given:
     worker = Executors.newSingleThreadExecutor()
     StubBoardResolver resolver = new StubBoardResolver(sweeperNoMatchBoard(), [3])
@@ -186,8 +186,9 @@ class GameEngineTest extends Specification {
     boolean success = engine.submitSwap(0, 0, 1, 0).get(2, TimeUnit.SECONDS)
 
     then:
-    success
-    engine.movesLeft == 4
+    !success
+    engine.movesLeft == 5
+    resolver.lastForcedActivations.isEmpty()
   }
 
   def 'allows swapping sweeper into a real line match and passes destination anchor hint'() {

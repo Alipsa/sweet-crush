@@ -383,7 +383,7 @@ class GameEngine implements AutoCloseable, GameSession {
   }
 
   private static boolean isSwapTriggeredSpecial(Piece piece) {
-    piece?.isSpecial()
+    piece?.isSpecial() && piece.specialType != SpecialPieceType.SWEEPER
   }
 
   private static boolean isSpecialSwapCombo(Piece first, Piece second) {
