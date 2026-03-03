@@ -33,34 +33,18 @@ class SpawnerManager {
         return
       }
 
-      // Occupancy-based guard: check if spawner cell already has the entity type it spawns
-      if (isOccupiedBySpawnedEntity(board, pos)) {
-        return
-      }
-
       SpawnTableEntry selected = selectWeighted(config.table)
       if (selected == null) {
         return
       }
 
+      // Kind-specific occupancy is enforced inside applySpawn
       SpawnEvent event = applySpawn(board, pos, selected)
       if (event != null) {
         events << event
       }
     }
     events
-  }
-
-  /**
-   * Checks if the spawner cell is occupied by a blocker or special piece,
-   * which would prevent a new spawn at this position.
-   */
-  private static boolean isOccupiedBySpawnedEntity(Board board, Position pos) {
-    if (board.getBlocker(pos.x, pos.y) != null) {
-      return true
-    }
-    Piece piece = board.getPiece(pos.x, pos.y)
-    return piece != null && piece.isSpecial()
   }
 
   private SpawnTableEntry selectWeighted(List<SpawnTableEntry> table) {

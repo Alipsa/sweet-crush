@@ -10,9 +10,11 @@ class GravityRefill {
   void apply(Board board, Map<CandyType, Integer> spawnWeights, Random random) {
     Map<CandyType, Integer> effectiveWeights = normalizeWeights(spawnWeights)
     applyWithoutRefill(board)
-    applyIngredientGravity(board)
-    // Re-run piece gravity so candies fall into cells vacated by ingredient movement
-    applyWithoutRefill(board)
+    int ingredientsMoved = applyIngredientGravity(board)
+    if (ingredientsMoved > 0) {
+      // Re-run piece gravity so candies fall into cells vacated by ingredient movement
+      applyWithoutRefill(board)
+    }
     refillEmptyCells(board, effectiveWeights, random)
   }
 
@@ -34,22 +36,25 @@ class GravityRefill {
     }
   }
 
-  void applyIngredientGravity(Board board) {
+  int applyIngredientGravity(Board board) {
     if (board == null) {
-      return
+      return 0
     }
 
+    int totalMoved = 0
     boolean topologyActive = board.hasOneWayTiles() || board.hasTeleporters()
     int maxIterations = Math.max(1, board.width * board.height * 8)
     for (int iteration = 0; iteration < maxIterations; iteration++) {
       int moved = settleIngredientsOnce(board)
+      totalMoved += moved
       if (topologyActive && moved > 0 && log.isDebugEnabled()) {
         log.debug('Ingredient gravity iteration {} moved {} ingredients', iteration + 1, moved)
       }
       if (moved == 0) {
-        return
+        return totalMoved
       }
     }
+    totalMoved
   }
 
   private int settleIngredientsOnce(Board board) {

@@ -254,7 +254,7 @@ This section is the implementation plan for:
   - `ingredients.spawnEveryTurns: int >= 1`.
   - Ingredient movement uses board gravity and teleport topology.
 - [x] 48. Add spawner config:
-  - `spawners: [{x,y,everyTurns,maxActive,table}]`.
+  - `spawners: [{x,y,everyTurns,table}]`.
   - `table: [{kind,type,layers,weight}]` where `kind` in `BLOCKER|SPECIAL`.
 - [ ] 49. Add campaign schema file `tracks/campaign.json`:
   - `campaignId`, `name`, `chapters`.
@@ -285,7 +285,7 @@ This section is the implementation plan for:
   - Resolve blocked exits and deadlock detection with reshuffle-safe handling.
 - [x] 57. Spawner engine:
   - Turn counter and per-spawner cadence.
-  - Spawn selection by weighted table with occupancy and `maxActive` guards.
+  - Spawn selection by weighted table with occupancy guards.
   - Prevent impossible states (no spawn target available -> skip and log).
 - [ ] 58. Campaign/progression engine:
   - Add campaign service for chapter navigation, unlock rules, and star calculation.
