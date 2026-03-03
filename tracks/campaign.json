@@ -1,0 +1,46 @@
+{
+  "campaignId": "sweet-crush-main",
+  "name": "Sweet Crush Campaign",
+  "chapters": [
+    {
+      "id": "chapter-1",
+      "name": "Getting Started",
+      "theme": "basics",
+      "levels": [
+        { "trackId": "classic-01", "unlockCondition": { "type": "NONE" } },
+        { "trackId": "test-01", "unlockCondition": { "type": "PREVIOUS_LEVEL_WIN" } },
+        { "trackId": "test-red-only", "unlockCondition": { "type": "PREVIOUS_LEVEL_WIN" } }
+      ]
+    },
+    {
+      "id": "chapter-2",
+      "name": "Obstacles",
+      "theme": "blockers",
+      "levels": [
+        { "trackId": "blockers-01", "unlockCondition": { "type": "PREVIOUS_LEVEL_WIN" } },
+        { "trackId": "blockers-objectives-01", "unlockCondition": { "type": "PREVIOUS_LEVEL_WIN" } },
+        { "trackId": "spawner-01", "unlockCondition": { "type": "PREVIOUS_LEVEL_WIN" } }
+      ]
+    },
+    {
+      "id": "chapter-3",
+      "name": "Special Boards",
+      "theme": "geometry",
+      "levels": [
+        { "trackId": "hole-board-01", "unlockCondition": { "type": "STAR_THRESHOLD", "starThreshold": 3 } },
+        { "trackId": "irregular-board-01", "unlockCondition": { "type": "PREVIOUS_LEVEL_WIN" } },
+        { "trackId": "one-way-track-01", "unlockCondition": { "type": "PREVIOUS_LEVEL_WIN" } },
+        { "trackId": "teleporter-track-01", "unlockCondition": { "type": "PREVIOUS_LEVEL_WIN" } },
+        { "trackId": "split-board-01", "unlockCondition": { "type": "PREVIOUS_LEVEL_WIN" } }
+      ]
+    },
+    {
+      "id": "chapter-4",
+      "name": "Ingredients",
+      "theme": "ingredients",
+      "levels": [
+        { "trackId": "ingredient-01", "unlockCondition": { "type": "STAR_THRESHOLD", "starThreshold": 6 } }
+      ]
+    }
+  ]
+}

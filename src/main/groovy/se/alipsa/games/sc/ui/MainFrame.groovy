@@ -4,12 +4,18 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import groovy.json.JsonSlurper
 import se.alipsa.games.sc.core.Board
+import se.alipsa.games.sc.core.CampaignService
 import se.alipsa.games.sc.core.GameEngine
 import se.alipsa.games.sc.core.GameListener
 import se.alipsa.games.sc.core.GameOutcome
 import se.alipsa.games.sc.core.IngredientType
+import se.alipsa.games.sc.io.CampaignLoadResult
+import se.alipsa.games.sc.io.CampaignLoader
 import se.alipsa.games.sc.io.LoadResult
+import se.alipsa.games.sc.io.ProgressStore
 import se.alipsa.games.sc.io.TrackLoader
+import se.alipsa.games.sc.model.Campaign
+import se.alipsa.games.sc.model.CampaignProgress
 import se.alipsa.games.sc.model.ObjectiveType
 import se.alipsa.games.sc.model.SpawnKind
 import se.alipsa.games.sc.model.Track
@@ -26,6 +32,7 @@ import javax.swing.SwingUtilities
 import javax.swing.DefaultListModel
 import javax.swing.ListSelectionModel
 import java.awt.BorderLayout
+import java.awt.CardLayout
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.GridLayout
@@ -52,7 +59,11 @@ class MainFrame extends JFrame {
   private static final Color TEXT_COLOR = new Color(0xECECEC)
   private static final Color LIST_SELECTION = new Color(0x6A6A6A)
 
+  private static final String CARD_TRACK_LIST = 'trackList'
+  private static final String CARD_CAMPAIGN_MAP = 'campaignMap'
+
   private final TrackLoader trackLoader = new TrackLoader()
+  private final CampaignLoader campaignLoader = new CampaignLoader()
   private final GameOverDialog gameOverDialog = new GameOverDialog()
   private final Preferences preferences = Preferences.userNodeForPackage(MainFrame)
 
@@ -64,12 +75,20 @@ class MainFrame extends JFrame {
   private final JButton createTrackButton = new JButton('Create Track')
   private final JButton editTrackButton = new JButton('Edit Track')
 
+  private final CardLayout rightPanelCardLayout = new CardLayout()
+  private final JPanel rightPanel = new JPanel(rightPanelCardLayout)
+  private CampaignMapPanel campaignMapPanel
+
   private ExecutorService gameWorker
   private GameEngine gameEngine
   private LoadResult currentLoadResult = new LoadResult([], [])
   private int currentTrackIndex = -1
   private boolean updatingTrackListSelection = false
   private Path currentTrackDirectory
+
+  private CampaignService campaignService
+  private CampaignProgress campaignProgress
+  private boolean campaignMode = false
 
   MainFrame() {
     super('Sweet Crush')
@@ -89,9 +108,15 @@ class MainFrame extends JFrame {
       }
     }
 
+    campaignMapPanel = new CampaignMapPanel({ String trackId -> onCampaignLevelSelected(trackId) })
+
+    rightPanel.add(buildTrackListPanel(), CARD_TRACK_LIST)
+    rightPanel.add(campaignMapPanel, CARD_CAMPAIGN_MAP)
+    rightPanelCardLayout.show(rightPanel, CARD_TRACK_LIST)
+
     add(controlPanel, BorderLayout.WEST)
     add(boardPanel, BorderLayout.CENTER)
-    add(buildTrackListPanel(), BorderLayout.EAST)
+    add(rightPanel, BorderLayout.EAST)
 
     addWindowListener(new WindowAdapter() {
       @Override
@@ -137,6 +162,10 @@ class MainFrame extends JFrame {
           'No Tracks',
           JOptionPane.INFORMATION_MESSAGE)
       currentTrackIndex = -1
+      campaignMode = false
+      campaignService = null
+      campaignProgress = null
+      rightPanelCardLayout.show(rightPanel, CARD_TRACK_LIST)
       controlPanel.updateGoal('Choose a track to start')
       controlPanel.updateObjectives([])
       controlPanel.updateScore(0)
@@ -146,11 +175,56 @@ class MainFrame extends JFrame {
       return
     }
 
+    Set<String> trackIds = loadResult.tracks.collect { Track t -> t.id }.toSet()
+    CampaignLoadResult campaignResult = campaignLoader.loadCampaign(directory, trackIds)
+
+    if (campaignResult.campaign != null) {
+      enterCampaignMode(campaignResult.campaign)
+      return
+    }
+
+    if (!campaignResult.errors.isEmpty()) {
+      log.warn('Campaign loading errors: {}', campaignResult.errors)
+    }
+
+    exitCampaignMode()
+
     int initialIndex = 0
     if (currentTrackIndex >= 0 && currentTrackIndex < loadResult.tracks.size()) {
       initialIndex = currentTrackIndex
     }
     startTrack(loadResult.tracks[initialIndex] as Track, initialIndex)
+  }
+
+  private void enterCampaignMode(Campaign campaign) {
+    log.info('Entering campaign mode: {}', campaign.name)
+    campaignMode = true
+    ProgressStore store = new ProgressStore()
+    campaignService = new CampaignService(campaign, store)
+    campaignProgress = campaignService.loadProgress()
+    rightPanelCardLayout.show(rightPanel, CARD_CAMPAIGN_MAP)
+    refreshCampaignMap(campaign)
+  }
+
+  private void exitCampaignMode() {
+    campaignMode = false
+    campaignService = null
+    campaignProgress = null
+    rightPanelCardLayout.show(rightPanel, CARD_TRACK_LIST)
+  }
+
+  private void refreshCampaignMap(Campaign campaign) {
+    campaignMapPanel.refresh(campaign, campaignProgress,
+        { level, progress -> campaignService.isUnlocked(level, progress) })
+  }
+
+  private void onCampaignLevelSelected(String trackId) {
+    Track track = currentLoadResult.tracks.find { Track t -> t.id == trackId } as Track
+    if (track == null) {
+      log.warn('Campaign level trackId {} not found in loaded tracks', trackId)
+      return
+    }
+    startTrack(track)
   }
 
   void startTrack(Track track) {
@@ -619,6 +693,24 @@ class MainFrame extends JFrame {
     void onGameOver(GameOutcome outcome, int finalScore, int movesLeft) {
       SwingUtilities.invokeLater {
         Track currentTrack = currentLoadResult.tracks[currentTrackIndex] as Track
+
+        if (campaignMode && outcome == GameOutcome.WIN) {
+          markTrackCompleted(currentTrack.id)
+          campaignService.recordWin(currentTrack.id, finalScore, currentTrack.targetScore, campaignProgress)
+          gameOverDialog.showForWin(MainFrame.this, currentTrackIndex, currentLoadResult.tracks.size())
+          refreshCampaignMap(campaignService.@campaign)
+          return
+        }
+
+        if (campaignMode) {
+          boolean completed = campaignProgress.isCompleted(currentTrack.id)
+          GameOverDialog.Action action = gameOverDialog.showForLose(MainFrame.this, completed)
+          if (action == GameOverDialog.Action.RETRY) {
+            restartCurrentTrack()
+          }
+          return
+        }
+
         if (outcome == GameOutcome.WIN) {
           markTrackCompleted(currentTrack.id)
           GameOverDialog.Action action = gameOverDialog.showForWin(MainFrame.this,
