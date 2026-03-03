@@ -4,7 +4,6 @@ import se.alipsa.games.sc.core.Blocker
 import se.alipsa.games.sc.core.BlockerType
 import se.alipsa.games.sc.core.Board
 import se.alipsa.games.sc.core.CandyType
-import se.alipsa.games.sc.core.FlowDirection
 import se.alipsa.games.sc.core.GameSession
 import se.alipsa.games.sc.core.Piece
 import se.alipsa.games.sc.core.Position
