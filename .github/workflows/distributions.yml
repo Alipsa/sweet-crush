@@ -55,6 +55,7 @@ jobs:
 
   cleanup-old-artifacts:
     name: Clean up old artifacts
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     needs: build-distributions
     permissions:
