@@ -12,7 +12,6 @@ class SpawnerManagerTest extends Specification {
     SpawnerConfig config = new SpawnerConfig(
         new Position(1, 1),
         2,
-        3,
         [new SpawnTableEntry(SpawnKind.BLOCKER, 'JELLY', 1, 1)]
     )
     SpawnerManager manager = new SpawnerManager([config], new Random(42L))
@@ -37,11 +36,10 @@ class SpawnerManagerTest extends Specification {
     board.getBlocker(1, 1).type == BlockerType.JELLY
   }
 
-  def 'respects maxActive guard and does not spawn beyond limit'() {
+  def 'does not spawn when cell is already occupied by blocker'() {
     given:
     SpawnerConfig config = new SpawnerConfig(
         new Position(1, 1),
-        1,
         1,
         [new SpawnTableEntry(SpawnKind.BLOCKER, 'CRATE', 1, 1)]
     )
@@ -56,7 +54,7 @@ class SpawnerManagerTest extends Specification {
     events1.size() == 1
     board.getBlocker(1, 1) != null
 
-    when: 'second turn skips because maxActive reached and blocker still present'
+    when: 'second turn skips because blocker still present at spawner cell'
     List<SpawnerManager.SpawnEvent> events2 = manager.processAfterMove(board)
 
     then:
@@ -68,7 +66,6 @@ class SpawnerManagerTest extends Specification {
     given:
     SpawnerConfig config = new SpawnerConfig(
         new Position(1, 1),
-        1,
         1,
         [new SpawnTableEntry(SpawnKind.BLOCKER, 'CRATE', 1, 1)]
     )
@@ -97,7 +94,6 @@ class SpawnerManagerTest extends Specification {
     SpawnerConfig config = new SpawnerConfig(
         new Position(1, 1),
         1,
-        5,
         [new SpawnTableEntry(SpawnKind.SPECIAL, 'FISH', 1, 1)]
     )
     SpawnerManager manager = new SpawnerManager([config], new Random(42L))
@@ -119,7 +115,6 @@ class SpawnerManagerTest extends Specification {
     SpawnerConfig config = new SpawnerConfig(
         new Position(1, 1),
         1,
-        2,
         [new SpawnTableEntry(SpawnKind.SPECIAL, 'FISH', 1, 1)]
     )
     SpawnerManager manager = new SpawnerManager([config], new Random(42L))
@@ -152,7 +147,6 @@ class SpawnerManagerTest extends Specification {
     SpawnerConfig config = new SpawnerConfig(
         new Position(1, 1),
         1,
-        5,
         [new SpawnTableEntry(SpawnKind.BLOCKER, 'JELLY', 1, 1)]
     )
     SpawnerManager manager = new SpawnerManager([config], new Random(42L))

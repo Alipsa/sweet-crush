@@ -34,7 +34,6 @@ class TrackValidator {
     validateBlockers(fileName, rawTrack, errors)
     validateObjectives(fileName, rawTrack, errors)
     validateIngredients(fileName, rawTrack, errors)
-    validateIngredientObjectiveCrossCheck(fileName, rawTrack, errors)
     validateSpawners(fileName, rawTrack, errors)
 
     return errors
@@ -732,32 +731,6 @@ class TrackValidator {
     }
   }
 
-  private static void validateIngredientObjectiveCrossCheck(String fileName, Map<String, ?> rawTrack, List<LoadError> errors) {
-    if (!rawTrack.containsKey('objectives') || !(rawTrack.objectives instanceof Collection)) {
-      return
-    }
-
-    boolean hasDropIngredientObjective = (rawTrack.objectives as Collection<?>).any { Object item ->
-      item instanceof Map && (item as Map<?, ?>).type?.toString() == ObjectiveType.DROP_INGREDIENT.name()
-    }
-
-    if (!hasDropIngredientObjective) {
-      return
-    }
-
-    Object ingredientsObj = rawTrack.containsKey('ingredients') ? rawTrack.ingredients : null
-    boolean ingredientsEnabled = false
-    if (ingredientsObj instanceof Map) {
-      Map<?, ?> ingredients = ingredientsObj as Map<?, ?>
-      ingredientsEnabled = ingredients.containsKey('enabled') && Boolean.parseBoolean(ingredients.enabled?.toString())
-    }
-
-    if (!ingredientsEnabled) {
-      errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
-          'Objective DROP_INGREDIENT requires ingredients.enabled=true')
-    }
-  }
-
   private static void validateSpawners(String fileName, Map<String, ?> rawTrack, List<LoadError> errors) {
     if (!rawTrack.containsKey('spawners') || rawTrack.spawners == null) {
       return
@@ -803,12 +776,6 @@ class TrackValidator {
       if (everyTurns == null || everyTurns < 1) {
         errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
             'Spawner everyTurns must be an integer >= 1')
-      }
-
-      Integer maxActive = asInteger(spawner.maxActive)
-      if (maxActive == null || maxActive < 1) {
-        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
-            'Spawner maxActive must be an integer >= 1')
       }
 
       if (!spawner.containsKey('table') || !(spawner.table instanceof Collection)) {

@@ -348,7 +348,6 @@ class GameEngineTest extends Specification {
         [new SpawnerConfig(
             new Position(1, 0),
             1,
-            1,
             [new SpawnTableEntry(SpawnKind.SPECIAL, 'FISH', 1, 1)]
         )]
     )

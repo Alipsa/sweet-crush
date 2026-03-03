@@ -287,7 +287,6 @@ class TrackLoaderTest extends Specification {
                 x        : '1',
                 y        : '1',
                 everyTurns: '3',
-                maxActive: '2',
                 table    : [
                     [kind: 'BLOCKER', type: 'JELLY', layers: '2', weight: '5']
                 ]
@@ -308,7 +307,6 @@ class TrackLoaderTest extends Specification {
     track.exitCells[0] == new Position(6, 8)
     track.spawners[0].position == new Position(1, 1)
     track.spawners[0].everyTurns == 3
-    track.spawners[0].maxActive == 2
     track.spawners[0].table[0].kind == SpawnKind.BLOCKER
     track.spawners[0].table[0].layers == 2
     track.spawners[0].table[0].weight == 5

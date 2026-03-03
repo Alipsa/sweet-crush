@@ -256,6 +256,11 @@ class GameEngine implements AutoCloseable, GameSession {
     }
     if (ingredientManager != null || spawnerManager != null) {
       gravityRefill.apply(board, track.spawnWeights, random)
+      // Resolve any new matches created by ingredient/spawner processing and gravity/refill
+      BoardResolver.CascadeResult postProcessResult = boardResolver.resolve(board, track.spawnWeights, listener)
+      int postProcessScore = scoreCascade(postProcessResult)
+      score += postProcessScore
+      updateObjectiveProgress(postProcessResult)
     }
 
     listener.onBoardUpdated(board.clone())

@@ -483,7 +483,6 @@ class Track {
       int x = toInt(entry.x, 0)
       int y = toInt(entry.y, 0)
       int everyTurns = toInt(entry.everyTurns, 1)
-      int maxActive = toInt(entry.maxActive, 1)
       List<SpawnTableEntry> table = []
       if (entry.containsKey('table') && entry.table instanceof Collection) {
         (entry.table as Collection<?>).each { Object tableItem ->
@@ -498,7 +497,7 @@ class Track {
           table << new SpawnTableEntry(kind, type, layers, weight)
         }
       }
-      spawners << new SpawnerConfig(new Position(x, y), everyTurns, maxActive, table)
+      spawners << new SpawnerConfig(new Position(x, y), everyTurns, table)
     }
     spawners
   }

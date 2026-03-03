@@ -7,6 +7,5 @@ import se.alipsa.games.sc.core.Position
 class SpawnerConfig {
   Position position
   int everyTurns
-  int maxActive
   List<SpawnTableEntry> table
 }
