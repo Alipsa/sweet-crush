@@ -10,6 +10,7 @@ class CampaignValidator {
     validateCampaignId(fileName, rawCampaign, errors)
     validateName(fileName, rawCampaign, errors)
     validateChapters(fileName, rawCampaign, knownTrackIds, errors)
+    validateUniqueTrackIds(fileName, rawCampaign, errors)
 
     return errors
   }
@@ -125,6 +126,32 @@ class CampaignValidator {
         } catch (IllegalArgumentException ignored) {
           errors << new LoadError(fileName, LoadErrorCode.INVALID_CAMPAIGN,
               "Chapter ${chapterIndex}, level ${levelIndex}: unknown unlockCondition.type '${condition.type}'")
+        }
+      }
+    }
+  }
+
+  private static void validateUniqueTrackIds(String fileName, Map<String, ?> rawCampaign, List<LoadError> errors) {
+    if (!(rawCampaign.chapters instanceof Collection)) {
+      return
+    }
+    Set<String> seen = new LinkedHashSet<>()
+    (rawCampaign.chapters as Collection<?>).eachWithIndex { Object item, int chapterIndex ->
+      if (!(item instanceof Map)) {
+        return
+      }
+      Map<?, ?> chapter = item as Map<?, ?>
+      if (!(chapter.levels instanceof Collection)) {
+        return
+      }
+      (chapter.levels as Collection<?>).eachWithIndex { Object levelItem, int levelIndex ->
+        if (!(levelItem instanceof Map)) {
+          return
+        }
+        String trackId = (levelItem as Map<?, ?>).trackId?.toString()?.trim()
+        if (trackId && !seen.add(trackId)) {
+          errors << new LoadError(fileName, LoadErrorCode.INVALID_CAMPAIGN,
+              "Chapter ${chapterIndex}, level ${levelIndex}: duplicate trackId '${trackId}'")
         }
       }
     }

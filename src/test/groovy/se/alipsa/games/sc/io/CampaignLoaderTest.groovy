@@ -182,6 +182,21 @@ class CampaignLoaderTest extends Specification {
     threshold << [0, -1, null]
   }
 
+  def 'returns error for duplicate trackId across campaign levels'() {
+    given:
+    CampaignLoader loader = new CampaignLoader()
+    Map campaign = validCampaign()
+    campaign.chapters[0].levels[1].trackId = 'classic-01'
+    writeCampaign(tempDir.resolve('campaign.json'), campaign)
+
+    when:
+    CampaignLoadResult result = loader.loadCampaign(tempDir, KNOWN_TRACK_IDS)
+
+    then:
+    result.campaign == null
+    result.errors.any { it.code == LoadErrorCode.INVALID_CAMPAIGN && it.message.contains("duplicate trackId 'classic-01'") }
+  }
+
   def 'parses STAR_THRESHOLD unlock condition with starThreshold'() {
     given:
     CampaignLoader loader = new CampaignLoader()

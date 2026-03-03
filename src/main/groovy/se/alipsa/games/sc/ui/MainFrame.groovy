@@ -710,6 +710,7 @@ class MainFrame extends JFrame {
           controlPanel.updateObjectives([])
           controlPanel.updateMovesLeft(0)
           controlPanel.updateSpecials([:])
+          controlPanel.updateScore(0)
           boardPanel.updateBoard(null)
           return
         }
