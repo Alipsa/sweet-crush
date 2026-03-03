@@ -112,9 +112,9 @@ class ControlPanel extends JPanel {
     scoreLabel.toolTipText = 'Points earned so far this level'
     movesLabel.toolTipText = 'Remaining swap moves before the level ends'
     sweeperLabel.toolTipText = 'Match 4 in a row to create; clears an entire row or column'
-    smallBombLabel.toolTipText = 'Match in a T or L shape to create; clears the 4 adjacent cells'
-    bombLabel.toolTipText = 'Match 5 in a row to create; clears all candies of one color'
-    fishLabel.toolTipText = 'Match a 2x2 square to create; swims to and clears a random target'
+    smallBombLabel.toolTipText = 'Match in a T or L shape to create; clears itself and the 4 adjacent cells'
+    bombLabel.toolTipText = 'Match 5 in a row to create; when swapped clears all candies of one color, when chain-activated clears a 3x3 area'
+    fishLabel.toolTipText = 'Match a 2x2 square to create; swims to and clears a target candy (prioritizes valuable or hard-to-reach targets)'
   }
 
   void updateGoal(String goalText) {

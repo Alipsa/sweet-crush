@@ -1,2 +1,2 @@
-# sweet crush release history
+# Sweet Crush Release History
 
