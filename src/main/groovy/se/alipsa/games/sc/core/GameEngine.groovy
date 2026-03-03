@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger
 import se.alipsa.games.sc.core.BlockerType
 import se.alipsa.games.sc.model.Objective
 import se.alipsa.games.sc.model.ObjectiveType
+import se.alipsa.games.sc.model.SpawnKind
 import se.alipsa.games.sc.model.Track
 
 import java.util.concurrent.Callable
@@ -37,6 +38,10 @@ class GameEngine implements AutoCloseable, GameSession {
   private final Map<SpecialPieceType, Integer> remainingSpecialPieces
   private final List<ObjectiveProgressState> objectiveStates
   private final Object objectiveLock = new Object()
+  private final IngredientManager ingredientManager
+  private final SpawnerManager spawnerManager
+  private final GravityRefill gravityRefill
+  private final Random random
 
   GameEngine(Track track,
              Random random = new Random(),
@@ -47,7 +52,8 @@ class GameEngine implements AutoCloseable, GameSession {
         new BoardResolver(random, new MatchFinder(), new GravityRefill()),
         new MatchFinder(),
         gameWorker,
-        listener
+        listener,
+        random
     )
   }
 
@@ -55,7 +61,8 @@ class GameEngine implements AutoCloseable, GameSession {
              BoardResolver boardResolver,
              MatchFinder matchFinder,
              ExecutorService gameWorker,
-             GameListener listener = null) {
+             GameListener listener = null,
+             Random random = null) {
     this.track = track
     this.boardResolver = boardResolver
     this.matchFinder = matchFinder
@@ -67,6 +74,14 @@ class GameEngine implements AutoCloseable, GameSession {
     this.objectiveStates = (track.objectives ?: []).collect { Objective objective ->
       new ObjectiveProgressState(objective)
     }
+    this.gravityRefill = new GravityRefill()
+    this.random = random ?: new Random()
+    this.ingredientManager = track.hasIngredients()
+        ? new IngredientManager(track.ingredientConfig, track.spawnCells, track.exitCells)
+        : null
+    this.spawnerManager = track.hasSpawners()
+        ? new SpawnerManager(track.spawners, this.random)
+        : null
     this.board = boardResolver.createInitialBoard(track, this.listener)
     this.currentBoardSnapshot = this.board?.clone()
   }
@@ -226,6 +241,28 @@ class GameEngine implements AutoCloseable, GameSession {
     score += gainedScore
     updateObjectiveProgress(cascadeResult)
 
+    if (ingredientManager != null) {
+      List<IngredientManager.CollectedIngredient> collected = ingredientManager.processAfterMove(board)
+      collected.each { IngredientManager.CollectedIngredient ci ->
+        listener.onIngredientCollected(ci.type, ci.exitCell)
+      }
+      updateIngredientObjectiveProgress()
+    }
+    if (spawnerManager != null) {
+      List<SpawnerManager.SpawnEvent> spawnEvents = spawnerManager.processAfterMove(board)
+      spawnEvents.each { SpawnerManager.SpawnEvent event ->
+        listener.onSpawnerActivated(event.position, event.kind, event.type)
+      }
+    }
+    if (ingredientManager != null || spawnerManager != null) {
+      gravityRefill.apply(board, track.spawnWeights, random)
+      // Resolve any new matches created by ingredient/spawner processing and gravity/refill
+      BoardResolver.CascadeResult postProcessResult = boardResolver.resolve(board, track.spawnWeights, listener)
+      int postProcessScore = scoreCascade(postProcessResult)
+      score += postProcessScore
+      updateObjectiveProgress(postProcessResult)
+    }
+
     listener.onBoardUpdated(board.clone())
     listener.onScoreChanged(score)
 
@@ -244,16 +281,21 @@ class GameEngine implements AutoCloseable, GameSession {
     StringBuilder out = new StringBuilder()
     out.append('y\\x ').append(' ')
     for (int x = 0; x < board.width; x++) {
-      out.append(x.toString().padRight(4))
+      out.append(x.toString().padRight(8))
     }
     out.append('\n')
     for (int y = 0; y < board.height; y++) {
       out.append(y.toString().padRight(4))
       for (int x = 0; x < board.width; x++) {
         if (!board.isPlayable(x, y)) {
-          out.append('##'.padRight(6))
+          out.append('##'.padRight(8))
         } else {
-          out.append(tokenFor(board.getPiece(x, y), board.getBlocker(x, y)).padRight(6))
+          String token = tokenFor(board.getPiece(x, y), board.getBlocker(x, y))
+          Ingredient ingredient = board.getIngredient(x, y)
+          if (ingredient != null) {
+            token = token + '+' + ingredient.type.name().substring(0, 2)
+          }
+          out.append(token.padRight(8))
         }
       }
       if (y < board.height - 1) {
@@ -413,6 +455,21 @@ class GameEngine implements AutoCloseable, GameSession {
                 : clearedBlockers.getOrDefault(state.objective.blockerType, 0)
             state.increment(cleared)
             break
+          case ObjectiveType.DROP_INGREDIENT:
+            break
+        }
+      }
+    }
+  }
+
+  private void updateIngredientObjectiveProgress() {
+    if (objectiveStates.isEmpty() || ingredientManager == null) {
+      return
+    }
+    synchronized (objectiveLock) {
+      objectiveStates.each { ObjectiveProgressState state ->
+        if (state.objective.type == ObjectiveType.DROP_INGREDIENT) {
+          state.updateProgress(ingredientManager.ingredientsCollected)
         }
       }
     }

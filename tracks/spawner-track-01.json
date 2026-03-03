@@ -1,0 +1,41 @@
+{
+  "id": "spawner-01",
+  "name": "Spawner Level 1",
+  "width": 7,
+  "height": 9,
+  "moves": 25,
+  "targetScore": 2000,
+  "specialPieces": {
+    "SWEEPER": 5,
+    "SMALL_BOMB": 5,
+    "BOMB": 3,
+    "FISH": 3
+  },
+  "spawnWeights": {
+    "RED": 3,
+    "BLUE": 3,
+    "GREEN": 2,
+    "YELLOW": 2,
+    "PURPLE": 2,
+    "ORANGE": 2
+  },
+  "spawners": [
+    {
+      "x": 1,
+      "y": 1,
+      "everyTurns": 3,
+      "table": [
+        { "kind": "BLOCKER", "type": "JELLY", "layers": 1, "weight": 3 },
+        { "kind": "BLOCKER", "type": "CRATE", "layers": 2, "weight": 1 }
+      ]
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "everyTurns": 4,
+      "table": [
+        { "kind": "BLOCKER", "type": "ICE", "layers": 1, "weight": 1 }
+      ]
+    }
+  ]
+}

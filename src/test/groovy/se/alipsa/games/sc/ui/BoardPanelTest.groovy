@@ -138,6 +138,28 @@ class BoardPanelTest extends Specification {
     noExceptionThrown()
   }
 
+  def 'includes burst effects when sweeper activation runs'() {
+    given:
+    Board start = boardOf(4, 4)
+    start.setPiece(1, 1, Piece.sweeper(CandyType.RED, true))
+    Board end = start.clone()
+    end.setCell(1, 1, CandyType.BLUE)
+    GameSession engine = Stub(GameSession) {
+      snapshotBoard() >> start
+      isResolving() >> false
+    }
+    BoardPanel panel = new BoardPanel()
+    panel.setGame(track(4, 4), engine)
+    panel.onSpecialActivated(se.alipsa.games.sc.core.SpecialPieceType.SWEEPER, new Position(1, 1), true)
+
+    when:
+    panel.updateBoard(end)
+
+    then:
+    panel.@transitionState != null
+    !panel.@transitionState.@bursts.isEmpty()
+  }
+
   def 'renders small bomb activation explosion without throwing'() {
     given:
     Board start = boardOf(5, 5)

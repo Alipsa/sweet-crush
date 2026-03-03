@@ -7,9 +7,11 @@ import se.alipsa.games.sc.core.Board
 import se.alipsa.games.sc.core.GameEngine
 import se.alipsa.games.sc.core.GameListener
 import se.alipsa.games.sc.core.GameOutcome
+import se.alipsa.games.sc.core.IngredientType
 import se.alipsa.games.sc.io.LoadResult
 import se.alipsa.games.sc.io.TrackLoader
 import se.alipsa.games.sc.model.ObjectiveType
+import se.alipsa.games.sc.model.SpawnKind
 import se.alipsa.games.sc.model.Track
 
 import javax.swing.JFrame
@@ -546,6 +548,9 @@ class MainFrame extends JFrame {
         case ObjectiveType.COLLECT_COLOR:
           label = "Collect ${objectiveProgress.objective.color.name()}"
           break
+        case ObjectiveType.DROP_INGREDIENT:
+          label = 'Drop ingredients'
+          break
         default:
           label = objectiveProgress.objective.type.name()
       }
@@ -597,6 +602,17 @@ class MainFrame extends JFrame {
       SwingUtilities.invokeLater {
         boardPanel.onBombBeam(origin, target)
       }
+    }
+
+    @Override
+    void onIngredientCollected(IngredientType type, se.alipsa.games.sc.core.Position exitCell) {
+      SwingUtilities.invokeLater {
+        controlPanel.updateObjectives(objectiveLinesFor(gameEngine.objectiveProgress))
+      }
+    }
+
+    @Override
+    void onSpawnerActivated(se.alipsa.games.sc.core.Position position, SpawnKind kind, String type) {
     }
 
     @Override

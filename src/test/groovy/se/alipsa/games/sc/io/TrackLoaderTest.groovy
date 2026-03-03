@@ -6,6 +6,7 @@ import se.alipsa.games.sc.core.BlockerType
 import se.alipsa.games.sc.core.FlowDirection
 import se.alipsa.games.sc.core.Position
 import se.alipsa.games.sc.model.ObjectiveType
+import se.alipsa.games.sc.model.SpawnKind
 import se.alipsa.games.sc.model.Track
 import spock.lang.Specification
 import spock.lang.TempDir
@@ -262,6 +263,53 @@ class TrackLoaderTest extends Specification {
     track.hasTeleporters()
     track.oneWayTiles[new Position(1, 1)] == FlowDirection.LEFT
     track.teleporters[new Position(0, 0)] == new Position(6, 8)
+  }
+
+  def 'parses ingredient and spawner numeric fields from numeric strings'() {
+    given:
+    TrackLoader loader = new TrackLoader()
+    writeTrack(tempDir.resolve('string-numbers.json'), [
+        id         : 'string-numbers',
+        name       : 'String numbers',
+        ingredients: [
+            enabled        : true,
+            spawnEveryTurns: '2',
+            queue          : [
+                [type: 'CHERRY', count: '3']
+            ]
+        ],
+        board      : [
+            spawnCells: [[x: '0', y: '0']],
+            exitCells : [[x: '6', y: '8']]
+        ],
+        spawners   : [
+            [
+                x        : '1',
+                y        : '1',
+                everyTurns: '3',
+                table    : [
+                    [kind: 'BLOCKER', type: 'JELLY', layers: '2', weight: '5']
+                ]
+            ]
+        ]
+    ])
+
+    when:
+    LoadResult result = loader.loadTracks(tempDir)
+
+    then:
+    result.errors.isEmpty()
+    Track track = result.tracks.find { it.id == 'string-numbers' } as Track
+    track != null
+    track.ingredientConfig.spawnEveryTurns == 2
+    track.ingredientConfig.queue[0].count == 3
+    track.spawnCells[0] == new Position(0, 0)
+    track.exitCells[0] == new Position(6, 8)
+    track.spawners[0].position == new Position(1, 1)
+    track.spawners[0].everyTurns == 3
+    track.spawners[0].table[0].kind == SpawnKind.BLOCKER
+    track.spawners[0].table[0].layers == 2
+    track.spawners[0].table[0].weight == 5
   }
 
   private void writeTrack(Path path, Map overrides = [:]) {

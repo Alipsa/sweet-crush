@@ -9,6 +9,8 @@ import se.alipsa.games.sc.core.BlockerType
 import se.alipsa.games.sc.core.CandyType
 import se.alipsa.games.sc.core.FlowDirection
 import se.alipsa.games.sc.core.GameSession
+import se.alipsa.games.sc.core.Ingredient
+import se.alipsa.games.sc.core.IngredientType
 import se.alipsa.games.sc.core.Piece
 import se.alipsa.games.sc.core.Position
 import se.alipsa.games.sc.core.SpecialPieceType
@@ -373,7 +375,12 @@ class BoardPanel extends JPanel {
         if (blocker != null) {
           drawBlockerOverlay(g2, blocker, left, top, cellSize)
         }
+        Ingredient ingredient = board.getIngredient(x, y)
+        if (ingredient != null) {
+          drawIngredientOverlay(g2, ingredient, left, top, cellSize)
+        }
         drawGeometryOverlay(g2, x, y, left, top, cellSize)
+        drawSpawnExitMarkers(g2, x, y, left, top, cellSize)
 
         if (draggedSource) {
           int inset = Math.max(2, cellSize / 10)
@@ -502,6 +509,133 @@ class BoardPanel extends JPanel {
       g2.drawString(text, tx, ty)
       g2.font = oldFont
     }
+  }
+
+  private void drawIngredientOverlay(Graphics2D g2, Ingredient ingredient, int left, int top, int cellSize) {
+    if (ingredient == null) {
+      return
+    }
+
+    int iconSize = Math.max(10, (int) Math.round(cellSize * 0.62d))
+    int cx = left + cellSize.intdiv(2)
+    int cy = top + cellSize.intdiv(2)
+
+    if (ingredient.type == IngredientType.CHERRY) {
+      drawCherryIngredientIcon(g2, cx, cy, iconSize)
+    } else {
+      drawAcornIngredientIcon(g2, cx, cy, iconSize)
+    }
+  }
+
+  private static void drawCherryIngredientIcon(Graphics2D g2, int cx, int cy, int size) {
+    int radius = Math.max(4, (int) Math.round(size * 0.23d))
+    int leftCx = cx - Math.max(3, radius - 1)
+    int rightCx = cx + Math.max(3, radius - 1)
+    int fruitCy = cy + Math.max(1, radius.intdiv(3))
+
+    g2.setColor(new Color(0xC51F2F))
+    g2.fillOval(leftCx - radius, fruitCy - radius, radius * 2, radius * 2)
+    g2.fillOval(rightCx - radius, fruitCy - radius, radius * 2, radius * 2)
+
+    g2.setColor(new Color(0xE84D5B))
+    int highlightR = Math.max(2, radius.intdiv(3))
+    g2.fillOval(leftCx - radius + 2, fruitCy - radius + 2, highlightR, highlightR)
+    g2.fillOval(rightCx - radius + 2, fruitCy - radius + 2, highlightR, highlightR)
+
+    java.awt.Stroke oldStroke = g2.stroke
+    g2.setStroke(new java.awt.BasicStroke(Math.max(1.5f, (float) (size * 0.07d)),
+        java.awt.BasicStroke.CAP_ROUND,
+        java.awt.BasicStroke.JOIN_ROUND))
+    g2.setColor(new Color(0x4A2B1A))
+    int stemJoinX = cx
+    int stemJoinY = fruitCy - Math.max(1, radius.intdiv(2))
+    int stemTopX = cx + Math.max(2, radius.intdiv(2))
+    int stemTopY = stemJoinY - Math.max(4, radius)
+    g2.drawLine(leftCx, stemJoinY, stemJoinX, stemJoinY)
+    g2.drawLine(rightCx, stemJoinY, stemJoinX, stemJoinY)
+    g2.drawLine(stemJoinX, stemJoinY, stemTopX, stemTopY)
+    g2.stroke = oldStroke
+
+    g2.setColor(new Color(0x4FAE56))
+    int leafW = Math.max(6, (int) Math.round(size * 0.28d))
+    int leafH = Math.max(4, (int) Math.round(size * 0.16d))
+    g2.fillOval(stemTopX - leafW.intdiv(2), stemTopY - leafH.intdiv(2), leafW, leafH)
+  }
+
+  private static void drawAcornIngredientIcon(Graphics2D g2, int cx, int cy, int size) {
+    int bodyW = Math.max(10, (int) Math.round(size * 0.48d))
+    int bodyH = Math.max(12, (int) Math.round(size * 0.58d))
+    int bodyX = cx - bodyW.intdiv(2)
+    int bodyY = cy - bodyH.intdiv(2) + Math.max(1, size.intdiv(12))
+
+    g2.setColor(new Color(0x9A623C))
+    g2.fillOval(bodyX, bodyY, bodyW, bodyH)
+
+    g2.setColor(new Color(0x7A4A2B))
+    int capH = Math.max(5, (int) Math.round(bodyH * 0.34d))
+    g2.fillRoundRect(bodyX - 1, bodyY - Math.max(1, capH.intdiv(4)), bodyW + 2, capH, capH, capH)
+
+    java.awt.Stroke oldStroke = g2.stroke
+    g2.setStroke(new java.awt.BasicStroke(Math.max(1.3f, (float) (size * 0.055d)),
+        java.awt.BasicStroke.CAP_ROUND,
+        java.awt.BasicStroke.JOIN_ROUND))
+    g2.setColor(new Color(0x5A381F))
+    int stemY = bodyY - Math.max(2, size.intdiv(7))
+    g2.drawLine(cx, bodyY, cx, stemY)
+    g2.stroke = oldStroke
+
+    g2.setColor(new Color(0xB98356))
+    int highlightW = Math.max(2, bodyW.intdiv(5))
+    int highlightH = Math.max(3, bodyH.intdiv(6))
+    g2.fillOval(bodyX + Math.max(2, bodyW.intdiv(5)), bodyY + Math.max(3, bodyH.intdiv(4)), highlightW, highlightH)
+  }
+
+  private transient Track spawnExitCacheTrack
+  private transient Set<Position> spawnCellSet
+  private transient Set<Position> exitCellSet
+
+  private void drawSpawnExitMarkers(Graphics2D g2, int x, int y, int left, int top, int cellSize) {
+    if (track == null) {
+      spawnExitCacheTrack = null
+      spawnCellSet = null
+      exitCellSet = null
+      return
+    }
+
+    if (track !== spawnExitCacheTrack) {
+      spawnExitCacheTrack = track
+      spawnCellSet = track.spawnCells ? new HashSet<>(track.spawnCells) : Collections.emptySet()
+      exitCellSet = track.exitCells ? new HashSet<>(track.exitCells) : Collections.emptySet()
+    }
+
+    Position pos = new Position(x, y)
+    boolean isSpawnCell = spawnCellSet.contains(pos)
+    boolean isExitCell = exitCellSet.contains(pos)
+
+    if (!isSpawnCell && !isExitCell) {
+      return
+    }
+
+    int cx = left + cellSize.intdiv(2)
+    int markerSize = Math.max(4, cellSize.intdiv(8))
+    java.awt.Stroke oldStroke = g2.stroke
+    g2.setStroke(new java.awt.BasicStroke(Math.max(1.5f, (float) (cellSize * 0.04d))))
+
+    if (isSpawnCell) {
+      int arrowTop = top + Math.max(2, cellSize.intdiv(12))
+      g2.setColor(new Color(100, 220, 100, 200))
+      g2.drawLine(cx, arrowTop, cx, arrowTop + markerSize)
+      g2.drawLine(cx, arrowTop + markerSize, cx - markerSize.intdiv(2), arrowTop + markerSize.intdiv(2))
+      g2.drawLine(cx, arrowTop + markerSize, cx + markerSize.intdiv(2), arrowTop + markerSize.intdiv(2))
+    }
+
+    if (isExitCell) {
+      int bottom = top + cellSize - Math.max(2, cellSize.intdiv(12)) - markerSize
+      g2.setColor(new Color(255, 200, 50, 200))
+      g2.fillRect(cx - markerSize, bottom, markerSize * 2, markerSize)
+    }
+
+    g2.stroke = oldStroke
   }
 
   private void drawCandy(Graphics2D g2,
@@ -1339,8 +1473,7 @@ class BoardPanel extends JPanel {
     Set<Position> targets = new HashSet<>()
     Set<Position> forcedClearCells = collectForcedClearCells(previous, sweeps, smallBombs, fishSwims)
     boolean suppressStandardBursts =
-        (sweeps != null && !sweeps.isEmpty()) ||
-            (smallBombs != null && !smallBombs.isEmpty())
+        (smallBombs != null && !smallBombs.isEmpty())
 
     for (int x = 0; x < previous.width; x++) {
       boolean[] oldUsed = new boolean[previous.height]

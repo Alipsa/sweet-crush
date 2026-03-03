@@ -206,6 +206,7 @@ class BoardResolver {
 
     Map<CandyType, Integer> weights = GravityRefill.normalizeWeights(spawnWeights)
     Map<Position, Blocker> blockers = captureBlockers(board)
+    Map<Position, Ingredient> ingredients = captureIngredients(board)
     boolean[][] playableMask = board.copyPlayableMask()
     Map<Position, FlowDirection> oneWayTiles = board.copyOneWayTiles()
     Map<Position, Position> teleporters = board.copyTeleporters()
@@ -214,6 +215,7 @@ class BoardResolver {
       for (int attempt = 0; attempt < RESHUFFLE_ATTEMPTS_PER_SEED; attempt++) {
         Board candidate = generateBoard(board.width, board.height, weights, playableMask, oneWayTiles, teleporters)
         restoreBlockers(candidate, blockers)
+        restoreIngredients(candidate, ingredients)
         if (candidate != null && !matchFinder.hasAnyMatch(candidate) && hasLegalSwap(candidate)) {
           board.copyFrom(candidate)
           return true
@@ -945,6 +947,33 @@ class BoardResolver {
     blockers.each { Position pos, Blocker blocker ->
       if (pos != null && blocker != null && board.inBounds(pos.x, pos.y)) {
         board.setBlocker(pos.x, pos.y, blocker)
+      }
+    }
+  }
+
+  private static Map<Position, Ingredient> captureIngredients(Board board) {
+    Map<Position, Ingredient> ingredients = [:]
+    if (board == null) {
+      return ingredients
+    }
+    for (int y = 0; y < board.height; y++) {
+      for (int x = 0; x < board.width; x++) {
+        Ingredient ingredient = board.getIngredient(x, y)
+        if (ingredient != null) {
+          ingredients[new Position(x, y)] = ingredient
+        }
+      }
+    }
+    ingredients
+  }
+
+  private static void restoreIngredients(Board board, Map<Position, Ingredient> ingredients) {
+    if (board == null || ingredients == null || ingredients.isEmpty()) {
+      return
+    }
+    ingredients.each { Position pos, Ingredient ingredient ->
+      if (pos != null && ingredient != null && board.inBounds(pos.x, pos.y)) {
+        board.setIngredient(pos.x, pos.y, ingredient)
       }
     }
   }

@@ -1,10 +1,12 @@
 package se.alipsa.games.sc.io
 
 import se.alipsa.games.sc.core.CandyType
+import se.alipsa.games.sc.core.IngredientType
 import se.alipsa.games.sc.core.SpecialPieceType
 import se.alipsa.games.sc.core.BlockerType
 import se.alipsa.games.sc.core.FlowDirection
 import se.alipsa.games.sc.model.ObjectiveType
+import se.alipsa.games.sc.model.SpawnKind
 
 import java.nio.file.Path
 import java.util.regex.Pattern
@@ -31,6 +33,8 @@ class TrackValidator {
     validateScoreColors(fileName, rawTrack, errors)
     validateBlockers(fileName, rawTrack, errors)
     validateObjectives(fileName, rawTrack, errors)
+    validateIngredients(fileName, rawTrack, errors)
+    validateSpawners(fileName, rawTrack, errors)
 
     return errors
   }
@@ -582,6 +586,274 @@ class TrackValidator {
       }
     }
     return mask
+  }
+
+  private static void validateIngredients(String fileName, Map<String, ?> rawTrack, List<LoadError> errors) {
+    boolean requiresIngredients = hasDropIngredientObjective(rawTrack)
+    if (!rawTrack.containsKey('ingredients') || rawTrack.ingredients == null) {
+      if (requiresIngredients) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+            'Objective DROP_INGREDIENT requires ingredients.enabled=true and a valid ingredients configuration')
+      }
+      return
+    }
+    if (!(rawTrack.ingredients instanceof Map)) {
+      errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS, 'ingredients must be a JSON object')
+      return
+    }
+
+    Map<?, ?> ingredients = rawTrack.ingredients as Map<?, ?>
+    boolean enabled = ingredients.containsKey('enabled') ? Boolean.parseBoolean(ingredients.enabled?.toString()) : false
+
+    if (requiresIngredients && !enabled) {
+      errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+          'Objective DROP_INGREDIENT requires ingredients.enabled=true and a valid ingredients configuration')
+    }
+
+    if (enabled) {
+      Integer width = asInteger(rawTrack.width)
+      Integer height = asInteger(rawTrack.height)
+      boolean[][] mask = playableMask(rawTrack, width, height)
+
+      if (ingredients.containsKey('spawnEveryTurns')) {
+        Integer spawnEvery = asInteger(ingredients.spawnEveryTurns)
+        if (spawnEvery == null || spawnEvery < 1) {
+          errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+              'ingredients.spawnEveryTurns must be an integer >= 1')
+        }
+      }
+
+      if (!ingredients.containsKey('queue') || !(ingredients.queue instanceof Collection) || (ingredients.queue as Collection<?>).isEmpty()) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+            'ingredients.queue must be a non-empty array when ingredients are enabled')
+      } else {
+        (ingredients.queue as Collection<?>).each { Object item ->
+          if (!(item instanceof Map)) {
+            errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS, 'Each queue entry must be a JSON object')
+            return
+          }
+          Map<?, ?> entry = item as Map<?, ?>
+          if (!entry.containsKey('type') || entry.type == null) {
+            errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS, 'Queue entry type is required')
+            return
+          }
+          try {
+            IngredientType.valueOf(entry.type.toString())
+          } catch (Exception ignored) {
+            errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+                "Unknown ingredient type: ${entry.type}")
+          }
+          Integer count = asInteger(entry.count)
+          if (count == null || count < 1) {
+            errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+                'Queue entry count must be an integer >= 1')
+          }
+        }
+      }
+
+      Object boardObj = rawTrack.containsKey('board') ? rawTrack.board : null
+      Map<?, ?> boardConfig = boardObj instanceof Map ? (Map<?, ?>) boardObj : null
+
+      validatePositionCells(fileName, 'spawnCells', boardConfig, mask, width, height, errors, true)
+      validatePositionCells(fileName, 'exitCells', boardConfig, mask, width, height, errors, true)
+    }
+  }
+
+  private static boolean hasDropIngredientObjective(Map<String, ?> rawTrack) {
+    if (!(rawTrack.objectives instanceof Collection)) {
+      return false
+    }
+    for (Object objectiveItem : (rawTrack.objectives as Collection<?>)) {
+      if (!(objectiveItem instanceof Map)) {
+        continue
+      }
+      Object typeValue = (objectiveItem as Map<?, ?>).type
+      if (typeValue == null) {
+        continue
+      }
+      try {
+        if (ObjectiveType.valueOf(typeValue.toString()) == ObjectiveType.DROP_INGREDIENT) {
+          return true
+        }
+      } catch (Exception ignored) {
+        // Invalid objective types are reported in validateObjectives.
+      }
+    }
+    false
+  }
+
+  private static void validatePositionCells(String fileName, String fieldName, Map<?, ?> boardConfig,
+                                             boolean[][] mask, Integer width, Integer height,
+                                             List<LoadError> errors, boolean required) {
+    if (boardConfig == null || !boardConfig.containsKey(fieldName) || boardConfig[fieldName] == null) {
+      if (required) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+            "board.${fieldName} is required when ingredients are enabled")
+      }
+      return
+    }
+
+    Object raw = boardConfig[fieldName]
+    if (!(raw instanceof Collection)) {
+      errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+          "board.${fieldName} must be a JSON array")
+      return
+    }
+
+    Collection<?> cells = raw as Collection<?>
+    if (cells.isEmpty()) {
+      errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+          "board.${fieldName} must contain at least one position")
+      return
+    }
+
+    cells.each { Object item ->
+      if (!(item instanceof Map)) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+            "Each ${fieldName} entry must be a JSON object")
+        return
+      }
+      Map<?, ?> entry = item as Map<?, ?>
+      Integer x = asInteger(entry.x)
+      Integer y = asInteger(entry.y)
+      if (x == null || y == null) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+            "${fieldName} x and y must be integers")
+        return
+      }
+      if (width != null && height != null && (x < 0 || x >= width || y < 0 || y >= height)) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+            "${fieldName} position (${x},${y}) is outside board bounds")
+      } else if (mask != null && !mask[y][x]) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_INGREDIENTS,
+            "${fieldName} position (${x},${y}) is on a hole cell")
+      }
+    }
+  }
+
+  private static void validateSpawners(String fileName, Map<String, ?> rawTrack, List<LoadError> errors) {
+    if (!rawTrack.containsKey('spawners') || rawTrack.spawners == null) {
+      return
+    }
+    if (!(rawTrack.spawners instanceof Collection)) {
+      errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS, 'spawners must be a JSON array')
+      return
+    }
+
+    Integer width = asInteger(rawTrack.width)
+    Integer height = asInteger(rawTrack.height)
+    boolean[][] mask = playableMask(rawTrack, width, height)
+
+    Set<String> seenPositions = [] as Set<String>
+
+    (rawTrack.spawners as Collection<?>).each { Object item ->
+      if (!(item instanceof Map)) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS, 'Each spawner must be a JSON object')
+        return
+      }
+      Map<?, ?> spawner = item as Map<?, ?>
+
+      Integer x = asInteger(spawner.x)
+      Integer y = asInteger(spawner.y)
+      if (x == null || y == null) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS, 'Spawner x and y must be integers')
+        return
+      }
+      String posKey = "${x},${y}"
+      if (!seenPositions.add(posKey)) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+            "Duplicate spawner position (${x},${y})")
+      }
+      if (width != null && height != null && (x < 0 || x >= width || y < 0 || y >= height)) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+            "Spawner position (${x},${y}) is outside board bounds")
+      } else if (mask != null && !mask[y][x]) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+            "Spawner position (${x},${y}) is on a hole cell")
+      }
+
+      Integer everyTurns = asInteger(spawner.everyTurns)
+      if (everyTurns == null || everyTurns < 1) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+            'Spawner everyTurns must be an integer >= 1')
+      }
+
+      if (!spawner.containsKey('table') || !(spawner.table instanceof Collection)) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+            'Spawner table is required and must be a JSON array')
+        return
+      }
+
+      Collection<?> table = spawner.table as Collection<?>
+      if (table.isEmpty()) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+            'Spawner table must contain at least one entry')
+        return
+      }
+
+      int totalWeight = 0
+      table.each { Object tableItem ->
+        if (!(tableItem instanceof Map)) {
+          errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+              'Each spawner table entry must be a JSON object')
+          return
+        }
+        Map<?, ?> tableEntry = tableItem as Map<?, ?>
+        if (!tableEntry.containsKey('kind') || tableEntry.kind == null) {
+          errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+              'Spawner table entry kind is required')
+          return
+        }
+        SpawnKind kindEnum
+        try {
+          kindEnum = SpawnKind.valueOf(tableEntry.kind.toString())
+        } catch (Exception ignored) {
+          errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+              "Unknown spawn kind: ${tableEntry.kind}")
+          return
+        }
+
+        if (!tableEntry.containsKey('type') || tableEntry.type == null) {
+          errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+              'Spawner table entry type is required')
+        } else {
+          String typeValue = tableEntry.type.toString()
+          if (kindEnum == SpawnKind.BLOCKER) {
+            try {
+              BlockerType.valueOf(typeValue)
+            } catch (Exception ignored) {
+              errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+                  "Unknown blocker type in spawner table: ${typeValue}")
+            }
+            Integer layers = asInteger(tableEntry.layers)
+            if (layers != null && layers < 1) {
+              errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+                  'Spawner table entry layers must be an integer >= 1 for BLOCKER kind')
+            }
+          } else if (kindEnum == SpawnKind.SPECIAL) {
+            try {
+              SpecialPieceType.valueOf(typeValue)
+            } catch (Exception ignored) {
+              errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+                  "Unknown special piece type in spawner table: ${typeValue}")
+            }
+          }
+        }
+
+        Integer weight = asInteger(tableEntry.weight)
+        if (weight == null || weight < 1) {
+          errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+              'Spawner table entry weight must be an integer >= 1')
+        } else {
+          totalWeight += weight
+        }
+      }
+
+      if (totalWeight <= 0) {
+        errors << new LoadError(fileName, LoadErrorCode.INVALID_SPAWNERS,
+            'Spawner table must have total positive weight')
+      }
+    }
   }
 
   private static Integer asInteger(Object value) {

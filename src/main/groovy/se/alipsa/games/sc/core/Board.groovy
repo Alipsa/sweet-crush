@@ -7,6 +7,7 @@ class Board implements Cloneable {
   private final Piece[][] cells
   private final boolean[][] playable
   private final Blocker[][] blockers
+  private final Ingredient[][] ingredients
   private final Map<Position, FlowDirection> oneWayTiles
   private final Map<Position, Position> teleporters
 
@@ -31,6 +32,7 @@ class Board implements Cloneable {
     this.cells = new Piece[height][width]
     this.playable = normalizePlayableMask(width, height, playableMask)
     this.blockers = new Blocker[height][width]
+    this.ingredients = new Ingredient[height][width]
     this.oneWayTiles = Collections.unmodifiableMap(normalizeOneWayTiles(width, height, this.playable, oneWayTiles))
     this.teleporters = Collections.unmodifiableMap(normalizeTeleporters(width, height, this.playable, teleporters))
   }
@@ -52,7 +54,7 @@ class Board implements Cloneable {
     if (!isPlayable(x, y)) {
       return
     }
-    cells[y][x] = value == null ? null : Piece.normal(value)
+    setPiece(x, y, value == null ? null : Piece.normal(value))
   }
 
   Piece getPiece(int x, int y) {
@@ -66,6 +68,9 @@ class Board implements Cloneable {
   void setPiece(int x, int y, Piece piece) {
     requireBounds(x, y)
     if (!isPlayable(x, y)) {
+      return
+    }
+    if (piece != null && ingredients[y][x] != null) {
       return
     }
     cells[y][x] = piece
@@ -85,6 +90,40 @@ class Board implements Cloneable {
       return
     }
     blockers[y][x] = blocker
+  }
+
+  Ingredient getIngredient(int x, int y) {
+    requireBounds(x, y)
+    if (!isPlayable(x, y)) {
+      return null
+    }
+    ingredients[y][x]
+  }
+
+  void setIngredient(int x, int y, Ingredient ingredient) {
+    requireBounds(x, y)
+    if (!isPlayable(x, y)) {
+      return
+    }
+    if (ingredient != null) {
+      cells[y][x] = null
+    }
+    ingredients[y][x] = ingredient
+  }
+
+  Ingredient removeIngredient(int x, int y) {
+    requireBounds(x, y)
+    if (!isPlayable(x, y)) {
+      return null
+    }
+    Ingredient existing = ingredients[y][x]
+    ingredients[y][x] = null
+    existing
+  }
+
+  boolean hasIngredient(int x, int y) {
+    requireBounds(x, y)
+    isPlayable(x, y) && ingredients[y][x] != null
   }
 
   BlockerDamage hitBlocker(int x, int y) {
@@ -125,6 +164,7 @@ class Board implements Cloneable {
       for (int x = 0; x < width; x++) {
         cells[y][x] = other.cells[y][x]
         blockers[y][x] = other.blockers[y][x]
+        ingredients[y][x] = other.ingredients[y][x]
       }
     }
   }

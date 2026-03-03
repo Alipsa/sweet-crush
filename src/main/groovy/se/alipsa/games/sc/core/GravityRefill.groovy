@@ -10,6 +10,11 @@ class GravityRefill {
   void apply(Board board, Map<CandyType, Integer> spawnWeights, Random random) {
     Map<CandyType, Integer> effectiveWeights = normalizeWeights(spawnWeights)
     applyWithoutRefill(board)
+    int ingredientsMoved = applyIngredientGravity(board)
+    if (ingredientsMoved > 0) {
+      // Re-run piece gravity so candies fall into cells vacated by ingredient movement
+      applyWithoutRefill(board)
+    }
     refillEmptyCells(board, effectiveWeights, random)
   }
 
@@ -31,12 +36,101 @@ class GravityRefill {
     }
   }
 
+  int applyIngredientGravity(Board board) {
+    if (board == null) {
+      return 0
+    }
+
+    int totalMoved = 0
+    boolean topologyActive = board.hasOneWayTiles() || board.hasTeleporters()
+    int maxIterations = Math.max(1, board.width * board.height * 8)
+    for (int iteration = 0; iteration < maxIterations; iteration++) {
+      int moved = settleIngredientsOnce(board)
+      totalMoved += moved
+      if (topologyActive && moved > 0 && log.isDebugEnabled()) {
+        log.debug('Ingredient gravity iteration {} moved {} ingredients', iteration + 1, moved)
+      }
+      if (moved == 0) {
+        return totalMoved
+      }
+    }
+    totalMoved
+  }
+
+  private int settleIngredientsOnce(Board board) {
+    int movedCount = 0
+    Set<Position> movedInto = [] as Set<Position>
+
+    for (int y = board.height - 1; y >= 0; y--) {
+      for (int x = 0; x < board.width; x++) {
+        if (!board.isPlayable(x, y)) {
+          continue
+        }
+
+        Position current = new Position(x, y)
+        if (movedInto.contains(current)) {
+          continue
+        }
+
+        Ingredient ingredient = board.getIngredient(x, y)
+        if (ingredient == null) {
+          continue
+        }
+
+        Position next = nextIngredientFallPosition(board, current)
+        if (next == null || board.hasIngredient(next.x, next.y)) {
+          continue
+        }
+
+        board.setIngredient(next.x, next.y, ingredient)
+        board.setIngredient(x, y, null)
+        movedInto << next
+        movedCount++
+      }
+    }
+
+    movedCount
+  }
+
+  private static Position nextIngredientFallPosition(Board board, Position current) {
+    Position teleported = board.teleporterTargetAt(current.x, current.y)
+    if (teleported != null &&
+        !board.hasIngredient(teleported.x, teleported.y) &&
+        board.getPiece(teleported.x, teleported.y) == null) {
+      return teleported
+    }
+
+    FlowDirection direction = board.flowDirectionAt(current.x, current.y) ?: FlowDirection.DOWN
+    firstOpenPlayableAlongForIngredient(board, current, direction)
+  }
+
+  private static Position firstOpenPlayableAlongForIngredient(Board board,
+                                                               Position origin,
+                                                               FlowDirection direction) {
+    if (direction == null) {
+      return null
+    }
+
+    int x = origin.x + direction.dx
+    int y = origin.y + direction.dy
+    while (board.inBounds(x, y)) {
+      if (board.isPlayable(x, y)) {
+        return (board.getPiece(x, y) == null && !board.hasIngredient(x, y))
+            ? new Position(x, y)
+            : null
+      }
+      x += direction.dx
+      y += direction.dy
+    }
+    null
+  }
+
   private void refillEmptyCells(Board board,
                                 Map<CandyType, Integer> spawnWeights,
                                 Random random) {
     for (int y = 0; y < board.height; y++) {
       for (int x = 0; x < board.width; x++) {
-        if (!board.isPlayable(x, y) || board.getPiece(x, y) != null) {
+        if (!board.isPlayable(x, y) || board.getPiece(x, y) != null || board.hasIngredient(x, y)) {
           continue
         }
         CandyType nextCandy = pickCandy(spawnWeights, random, [] as Set<CandyType>)
@@ -82,7 +176,9 @@ class GravityRefill {
 
   private static Position nextFallPosition(Board board, Position current) {
     Position teleported = board.teleporterTargetAt(current.x, current.y)
-    if (teleported != null && board.getPiece(teleported.x, teleported.y) == null) {
+    if (teleported != null &&
+        board.getPiece(teleported.x, teleported.y) == null &&
+        !board.hasIngredient(teleported.x, teleported.y)) {
       return teleported
     }
 
@@ -101,7 +197,9 @@ class GravityRefill {
     int y = origin.y + direction.dy
     while (board.inBounds(x, y)) {
       if (board.isPlayable(x, y)) {
-        return board.getPiece(x, y) == null ? new Position(x, y) : null
+        return (board.getPiece(x, y) == null && !board.hasIngredient(x, y))
+            ? new Position(x, y)
+            : null
       }
       x += direction.dx
       y += direction.dy

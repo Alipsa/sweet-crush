@@ -4,6 +4,7 @@ import se.alipsa.games.sc.core.Blocker
 import se.alipsa.games.sc.core.BlockerType
 import se.alipsa.games.sc.core.CandyType
 import se.alipsa.games.sc.core.FlowDirection
+import se.alipsa.games.sc.core.IngredientType
 import se.alipsa.games.sc.core.Position
 import se.alipsa.games.sc.core.SpecialPieceType
 
@@ -24,6 +25,10 @@ class Track {
   final List<String> boardMask
   final Map<Position, FlowDirection> oneWayTiles
   final Map<Position, Position> teleporters
+  final IngredientConfig ingredientConfig
+  final List<Position> spawnCells
+  final List<Position> exitCells
+  final List<SpawnerConfig> spawners
   Path sourcePath
 
   Track(String id,
@@ -39,7 +44,11 @@ class Track {
         List<Objective> objectives = null,
         List<String> boardMask = null,
         Map<Position, FlowDirection> oneWayTiles = null,
-        Map<Position, Position> teleporters = null) {
+        Map<Position, Position> teleporters = null,
+        IngredientConfig ingredientConfig = null,
+        List<Position> spawnCells = null,
+        List<Position> exitCells = null,
+        List<SpawnerConfig> spawners = null) {
     this.id = id
     this.name = name
     this.width = width
@@ -54,6 +63,10 @@ class Track {
     this.boardMask = Collections.unmodifiableList(normalizeBoardMask(width, height, boardMask))
     this.oneWayTiles = Collections.unmodifiableMap(normalizeOneWayTiles(oneWayTiles))
     this.teleporters = Collections.unmodifiableMap(normalizeTeleporters(teleporters))
+    this.ingredientConfig = normalizeIngredientConfig(ingredientConfig)
+    this.spawnCells = Collections.unmodifiableList(normalizePositionList(spawnCells))
+    this.exitCells = Collections.unmodifiableList(normalizePositionList(exitCells))
+    this.spawners = Collections.unmodifiableList(normalizeSpawners(spawners))
   }
 
   static Track fromMap(Map<String, ?> data) {
@@ -111,6 +124,28 @@ class Track {
       teleporters = normalizeTeleportersFromList(boardConfig.teleporters as Collection<?>)
     }
 
+    IngredientConfig ingredientConfig = null
+    if (data.containsKey('ingredients') && data.ingredients != null) {
+      ingredientConfig = parseIngredientConfig(data.ingredients as Map<?, ?>)
+    }
+
+    List<Position> spawnCells = null
+    List<Position> exitCells = null
+    boolean ingredientsEnabled = ingredientConfig != null && ingredientConfig.enabled
+    if (ingredientsEnabled && boardConfig != null) {
+      if (boardConfig.containsKey('spawnCells') && boardConfig.spawnCells != null) {
+        spawnCells = parsePositionList(boardConfig.spawnCells as Collection<?>)
+      }
+      if (boardConfig.containsKey('exitCells') && boardConfig.exitCells != null) {
+        exitCells = parsePositionList(boardConfig.exitCells as Collection<?>)
+      }
+    }
+
+    List<SpawnerConfig> spawners = null
+    if (data.containsKey('spawners') && data.spawners != null) {
+      spawners = parseSpawnersList(data.spawners as Collection<?>)
+    }
+
     return new Track(
         data.id?.toString(),
         data.name?.toString(),
@@ -125,7 +160,11 @@ class Track {
         objectives,
         boardMask,
         oneWayTiles,
-        teleporters
+        teleporters,
+        ingredientConfig,
+        spawnCells,
+        exitCells,
+        spawners
     )
   }
 
@@ -151,6 +190,14 @@ class Track {
 
   boolean hasTeleporters() {
     !teleporters.isEmpty()
+  }
+
+  boolean hasIngredients() {
+    ingredientConfig != null && ingredientConfig.enabled
+  }
+
+  boolean hasSpawners() {
+    !spawners.isEmpty()
   }
 
   boolean isPlayable(int x, int y) {
@@ -368,5 +415,104 @@ class Track {
       normalized[fromPos] = toPos
     }
     normalized
+  }
+
+  private static IngredientConfig normalizeIngredientConfig(IngredientConfig config) {
+    if (config == null) {
+      return new IngredientConfig(false, [], 1)
+    }
+    config
+  }
+
+  private static List<Position> normalizePositionList(List<Position> positions) {
+    if (positions == null) {
+      return []
+    }
+    positions.findAll { it != null }
+  }
+
+  private static List<SpawnerConfig> normalizeSpawners(List<SpawnerConfig> spawners) {
+    if (spawners == null) {
+      return []
+    }
+    spawners.findAll { it != null }
+  }
+
+  private static IngredientConfig parseIngredientConfig(Map<?, ?> raw) {
+    if (raw == null) {
+      return null
+    }
+    boolean enabled = raw.containsKey('enabled') ? Boolean.parseBoolean(raw.enabled.toString()) : false
+    int spawnEveryTurns = 1
+    List<IngredientQueueEntry> queue = []
+    if (enabled) {
+      spawnEveryTurns = raw.containsKey('spawnEveryTurns') ? toInt(raw.spawnEveryTurns, 1) : 1
+      if (raw.containsKey('queue') && raw.queue instanceof Collection) {
+        (raw.queue as Collection<?>).each { Object item ->
+          Map<?, ?> entry = item as Map<?, ?>
+          IngredientType type = IngredientType.valueOf(entry.type.toString())
+          int count = toInt(entry.count, 0)
+          queue << new IngredientQueueEntry(type, count)
+        }
+      }
+    }
+    new IngredientConfig(enabled, queue, spawnEveryTurns)
+  }
+
+  private static List<Position> parsePositionList(Collection<?> rawPositions) {
+    if (rawPositions == null) {
+      return null
+    }
+    List<Position> positions = []
+    rawPositions.each { Object item ->
+      Map<?, ?> entry = item as Map<?, ?>
+      int x = toInt(entry.x, 0)
+      int y = toInt(entry.y, 0)
+      positions << new Position(x, y)
+    }
+    positions
+  }
+
+  private static List<SpawnerConfig> parseSpawnersList(Collection<?> rawSpawners) {
+    if (rawSpawners == null) {
+      return null
+    }
+    List<SpawnerConfig> spawners = []
+    rawSpawners.each { Object item ->
+      Map<?, ?> entry = item as Map<?, ?>
+      int x = toInt(entry.x, 0)
+      int y = toInt(entry.y, 0)
+      int everyTurns = toInt(entry.everyTurns, 1)
+      List<SpawnTableEntry> table = []
+      if (entry.containsKey('table') && entry.table instanceof Collection) {
+        (entry.table as Collection<?>).each { Object tableItem ->
+          Map<?, ?> tableEntry = tableItem as Map<?, ?>
+          SpawnKind kind = SpawnKind.valueOf(tableEntry.kind.toString())
+          String type = tableEntry.type?.toString()
+          int layers = 1
+          if (kind == SpawnKind.BLOCKER && tableEntry.containsKey('layers')) {
+            layers = toInt(tableEntry.layers, 1)
+          }
+          int weight = toInt(tableEntry.weight, 1)
+          table << new SpawnTableEntry(kind, type, layers, weight)
+        }
+      }
+      spawners << new SpawnerConfig(new Position(x, y), everyTurns, table)
+    }
+    spawners
+  }
+
+  private static int toInt(Object value, int defaultValue) {
+    if (value == null) {
+      return defaultValue
+    }
+    if (value instanceof Number) {
+      return ((Number) value).intValue()
+    }
+    try {
+      return Integer.parseInt(value.toString())
+    } catch (NumberFormatException ignored) {
+      return defaultValue
+    }
   }
 }
