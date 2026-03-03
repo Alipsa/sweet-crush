@@ -75,6 +75,55 @@ class CampaignMapPanelTest extends Specification {
     !starLabels.isEmpty()
   }
 
+  def 'level buttons and locked labels have tooltips'() {
+    given:
+    CampaignMapPanel panel = new CampaignMapPanel({ String trackId -> })
+    Campaign campaign = buildCampaign()
+    CampaignProgress progress = new CampaignProgress('test')
+    Map<String, String> trackNames = ['track-1': 'First Track', 'track-2': 'Second Track']
+
+    when: 'first level unlocked, second locked'
+    panel.refresh(campaign, progress, { level, prog ->
+      level.trackId == 'track-1'
+    }, trackNames)
+
+    then: 'unlocked level button has tooltip with track name'
+    List<JButton> buttons = findLevelButtons(panel)
+    buttons.size() == 1
+    buttons[0].toolTipText?.contains('First Track')
+
+    and: 'locked level label has unlock requirement tooltip'
+    List<JLabel> lockedLabels = findAllLabels(panel).findAll { JLabel l ->
+      l.text?.contains('Level 2') && l.text?.contains('\uD83D\uDD12')
+    }
+    lockedLabels.size() == 1
+    lockedLabels[0].toolTipText?.contains('previous level')
+  }
+
+  def 'locked label with STAR_THRESHOLD shows star count in tooltip'() {
+    given:
+    CampaignMapPanel panel = new CampaignMapPanel({ String trackId -> })
+    Campaign campaign = new Campaign('test', 'Test Campaign', [
+        new Chapter('ch1', 'Chapter 1', 'theme', [
+            new CampaignLevel('track-1', new UnlockCondition(UnlockType.NONE, 0)),
+            new CampaignLevel('track-2', new UnlockCondition(UnlockType.STAR_THRESHOLD, 5))
+        ])
+    ])
+    CampaignProgress progress = new CampaignProgress('test')
+
+    when: 'second level locked by star threshold'
+    panel.refresh(campaign, progress, { level, prog ->
+      level.trackId == 'track-1'
+    })
+
+    then:
+    List<JLabel> lockedLabels = findAllLabels(panel).findAll { JLabel l ->
+      l.text?.contains('Level 2') && l.text?.contains('\uD83D\uDD12')
+    }
+    lockedLabels.size() == 1
+    lockedLabels[0].toolTipText == 'Earn 5 total stars to unlock'
+  }
+
   def 'refresh with null campaign clears panel'() {
     given:
     CampaignMapPanel panel = new CampaignMapPanel({ String trackId -> })

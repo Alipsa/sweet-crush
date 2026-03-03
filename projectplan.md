@@ -325,10 +325,10 @@ This section is the implementation plan for:
   - Add ingredient/drop mode (`CHERRY`, `NUT`) and exit cells.
   - Add spawner tiles for blockers and specials.
   - Exit criteria: ingredient and spawner interaction tests green with specials enabled.
-- [ ] Phase 5: `M8e`
+- [x] Phase 5: `M8e`
   - Add campaign map (`campaign.json`) with chapters, themes, unlock rules, and progress persistence.
   - Exit criteria: complete chapter flow from locked start to unlock progression.
-- [ ] Phase 6 (Polish/Balancing): `M8f`
+- [x] Phase 6 (Polish/Balancing): `M8f`
   - Content balancing pass, tutorial tooltips for new mechanics, and performance optimization.
   - Exit criteria: target FPS/UI responsiveness maintained on HiDPI and standard displays.
 
@@ -356,7 +356,7 @@ This section is the implementation plan for:
 - [x] M8c: Phase 3 complete (one-way tiles + teleporters).
 - [x] M8d: Phase 4 complete (ingredient/drop mode + spawner tiles).
 - [x] M8e: Phase 5 complete (campaign map + progression persistence).
-- [ ] M8f: Phase 6 complete (balancing/performance/polish).
+- [x] M8f: Phase 6 complete (balancing/performance/polish).
 - [x] M9: UX polish (persistent track directory, track editing, readability improvements, completion-gated skip).
 ## Definition Of Done (MVP)
 - [ ] `mvn clean verify` passes with all tests green and zero compiler warnings from project sources (`src/main` + `src/test`).

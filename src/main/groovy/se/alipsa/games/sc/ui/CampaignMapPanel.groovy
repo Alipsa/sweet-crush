@@ -4,6 +4,7 @@ import se.alipsa.games.sc.model.Campaign
 import se.alipsa.games.sc.model.CampaignLevel
 import se.alipsa.games.sc.model.CampaignProgress
 import se.alipsa.games.sc.model.Chapter
+import se.alipsa.games.sc.model.UnlockType
 
 import javax.swing.BorderFactory
 import javax.swing.Box
@@ -63,7 +64,8 @@ class CampaignMapPanel extends JPanel {
   }
 
   void refresh(Campaign campaign, CampaignProgress progress,
-               java.util.function.BiFunction<CampaignLevel, CampaignProgress, Boolean> unlockChecker) {
+               java.util.function.BiFunction<CampaignLevel, CampaignProgress, Boolean> unlockChecker,
+               Map<String, String> trackNames = [:]) {
     contentPanel.removeAll()
 
     if (campaign == null) {
@@ -81,7 +83,7 @@ class CampaignMapPanel extends JPanel {
 
     campaign.chapters.each { Chapter chapter ->
       chapterExpanded.putIfAbsent(chapter.id, true)
-      contentPanel.add(createChapterSection(chapter, progress, unlockChecker))
+      contentPanel.add(createChapterSection(chapter, progress, unlockChecker, trackNames))
     }
 
     contentPanel.add(Box.createVerticalGlue())
@@ -90,7 +92,8 @@ class CampaignMapPanel extends JPanel {
   }
 
   private JPanel createChapterSection(Chapter chapter, CampaignProgress progress,
-                                       java.util.function.BiFunction<CampaignLevel, CampaignProgress, Boolean> unlockChecker) {
+                                       java.util.function.BiFunction<CampaignLevel, CampaignProgress, Boolean> unlockChecker,
+                                       Map<String, String> trackNames) {
     JPanel sectionPanel = new JPanel()
     sectionPanel.layout = new BoxLayout(sectionPanel, BoxLayout.Y_AXIS)
     sectionPanel.background = PANEL_BACKGROUND
@@ -128,7 +131,7 @@ class CampaignMapPanel extends JPanel {
 
     chapter.levels.eachWithIndex { CampaignLevel level, int index ->
       boolean unlocked = unlockChecker.apply(level, progress)
-      levelsPanel.add(createLevelButton(level, index + 1, progress, unlocked))
+      levelsPanel.add(createLevelButton(level, index + 1, progress, unlocked, trackNames))
     }
 
     sectionPanel.add(levelsPanel)
@@ -149,7 +152,8 @@ class CampaignMapPanel extends JPanel {
   }
 
   private JPanel createLevelButton(CampaignLevel level, int levelNumber,
-                                    CampaignProgress progress, boolean unlocked) {
+                                    CampaignProgress progress, boolean unlocked,
+                                    Map<String, String> trackNames = [:]) {
     JPanel row = new JPanel(new BorderLayout())
     row.background = PANEL_BACKGROUND
     row.maximumSize = new Dimension(Integer.MAX_VALUE, 36)
@@ -165,6 +169,8 @@ class CampaignMapPanel extends JPanel {
       button.focusPainted = false
       button.preferredSize = new Dimension(120, 28)
       button.addActionListener { onLevelSelected.accept(level.trackId) }
+      String trackName = trackNames?.getOrDefault(level.trackId, level.trackId) ?: level.trackId
+      button.toolTipText = "Play ${trackName}"
       row.add(button, BorderLayout.WEST)
 
       int stars = progress.getStars(level.trackId)
@@ -177,6 +183,7 @@ class CampaignMapPanel extends JPanel {
       lockedLabel.foreground = LOCKED_COLOR
       lockedLabel.font = lockedLabel.font.deriveFont(Font.PLAIN, 13f)
       lockedLabel.border = BorderFactory.createEmptyBorder(4, 8, 4, 0)
+      lockedLabel.toolTipText = unlockRequirementText(level)
       row.add(lockedLabel, BorderLayout.WEST)
     }
 
@@ -193,5 +200,19 @@ class CampaignMapPanel extends JPanel {
 
   private static String starString(int totalStars) {
     "\u2605 ${totalStars}"
+  }
+
+  private static String unlockRequirementText(CampaignLevel level) {
+    if (level.unlockCondition == null) {
+      return 'Locked'
+    }
+    switch (level.unlockCondition.type) {
+      case UnlockType.PREVIOUS_LEVEL_WIN:
+        return 'Win the previous level to unlock'
+      case UnlockType.STAR_THRESHOLD:
+        return "Earn ${level.unlockCondition.starThreshold} total stars to unlock"
+      default:
+        return 'Locked'
+    }
   }
 }

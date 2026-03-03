@@ -227,8 +227,10 @@ class MainFrame extends JFrame {
   }
 
   private void refreshCampaignMap(Campaign campaign) {
+    Map<String, String> trackNames = [:]
+    currentLoadResult.tracks.each { Track t -> trackNames[t.id] = t.name }
     campaignMapPanel.refresh(campaign, campaignProgress,
-        { level, progress -> campaignService.isUnlocked(level, progress) })
+        { level, progress -> campaignService.isUnlocked(level, progress) }, trackNames)
   }
 
   private void onCampaignLevelSelected(String trackId) {

@@ -1,5 +1,7 @@
 package se.alipsa.games.sc.ui
 
+import se.alipsa.games.sc.core.Blocker
+import se.alipsa.games.sc.core.BlockerType
 import se.alipsa.games.sc.core.Board
 import se.alipsa.games.sc.core.CandyType
 import se.alipsa.games.sc.core.GameSession
@@ -8,6 +10,7 @@ import se.alipsa.games.sc.core.Position
 import se.alipsa.games.sc.model.Track
 import spock.lang.Specification
 
+import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
 
 class BoardPanelTest extends Specification {
@@ -237,6 +240,74 @@ class BoardPanelTest extends Specification {
 
     then:
     noExceptionThrown()
+  }
+
+  def 'getToolTipText returns description for special piece with blocker'() {
+    given:
+    Board board = new Board(4, 4)
+    board.setPiece(1, 1, Piece.sweeper(CandyType.RED, true))
+    board.setBlocker(1, 1, new Blocker(BlockerType.JELLY, 2))
+    GameSession engine = Stub(GameSession) {
+      snapshotBoard() >> board
+      isResolving() >> false
+    }
+    BoardPanel panel = new BoardPanel()
+    panel.setGame(track(4, 4), engine)
+    panel.setSize(400, 400)
+
+    when:
+    int cellSize = panel.computeCellSize(400, 400)
+    int offsetX = (400 - 4 * cellSize).intdiv(2)
+    int offsetY = (400 - 4 * cellSize).intdiv(2)
+    int pixelX = offsetX + cellSize + cellSize.intdiv(2)
+    int pixelY = offsetY + cellSize + cellSize.intdiv(2)
+    MouseEvent event = new MouseEvent(panel, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, pixelX, pixelY, 0, false)
+    String tooltip = panel.getToolTipText(event)
+
+    then:
+    tooltip != null
+    tooltip.contains('RED')
+    tooltip.contains('Sweeper')
+    tooltip.contains('horizontal')
+    tooltip.contains('JELLY blocker')
+    tooltip.contains('2 layers')
+  }
+
+  def 'getToolTipText returns description for teleporter cell'() {
+    given:
+    Map<Position, Position> teleporters = [(new Position(0, 0)): new Position(3, 3)]
+    Board board = new Board(4, 4, null, null, teleporters)
+    board.setCell(0, 0, CandyType.BLUE)
+    GameSession engine = Stub(GameSession) {
+      snapshotBoard() >> board
+      isResolving() >> false
+    }
+    BoardPanel panel = new BoardPanel()
+    panel.setGame(track(4, 4), engine)
+    panel.setSize(400, 400)
+
+    when:
+    int cellSize = panel.computeCellSize(400, 400)
+    int offsetX = (400 - 4 * cellSize).intdiv(2)
+    int offsetY = (400 - 4 * cellSize).intdiv(2)
+    int pixelX = offsetX + cellSize.intdiv(2)
+    int pixelY = offsetY + cellSize.intdiv(2)
+    MouseEvent event = new MouseEvent(panel, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, pixelX, pixelY, 0, false)
+    String tooltip = panel.getToolTipText(event)
+
+    then:
+    tooltip != null
+    tooltip.contains('BLUE')
+    tooltip.contains('Teleporter to (3, 3)')
+  }
+
+  def 'getToolTipText returns null when no board is loaded'() {
+    given:
+    BoardPanel panel = new BoardPanel()
+    MouseEvent event = new MouseEvent(panel, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, 50, 50, 0, false)
+
+    expect:
+    panel.getToolTipText(event) == null
   }
 
   private static Track track(int width, int height) {
