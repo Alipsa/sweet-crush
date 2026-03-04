@@ -89,28 +89,20 @@ done
 echo "Distribution files ready:"
 printf "  %s\n" "${RELEASE_FILES[@]}"
 
-# 3. Generate release notes from git history since last release
+# 3. Generate release notes via GitHub (Copilot-powered)
 echo "Generating release notes..."
 
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
-if [[ -n "${LAST_TAG}" ]]; then
-  LOG_RANGE="${LAST_TAG}..HEAD"
-else
-  LOG_RANGE="HEAD"
-fi
+REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
+
+GENERATED=$(gh api "repos/${REPO}/releases/generate-notes" \
+  -f tag_name="${TAG}" \
+  ${LAST_TAG:+-f previous_tag_name="${LAST_TAG}"} \
+  --jq '.body') || die "Failed to generate release notes via GitHub API"
 
 TODAY=$(date +%Y-%m-%d)
-NOTES_HEADER="## ${TAG}, ${TODAY}"
-
-# Collect commit summaries (one-liners, skip merge commits)
-COMMIT_LOG=$(git log "${LOG_RANGE}" --no-merges --pretty=format:"- %s" 2>/dev/null || true)
-if [[ -z "${COMMIT_LOG}" ]]; then
-  COMMIT_LOG="- Initial release"
-fi
-
-# Build the release notes block
-RELEASE_NOTES="${NOTES_HEADER}
-${COMMIT_LOG}"
+RELEASE_NOTES="## ${TAG}, ${TODAY}
+${GENERATED}"
 
 # Prepend to release.md (after the title line)
 RELEASE_MD="${SCRIPT_DIR}/release.md"
