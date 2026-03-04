@@ -180,11 +180,12 @@
           <plugin>
             <groupId>org.codehaus.gmavenplus</groupId>
             <artifactId>gmavenplus-plugin</artifactId>
+            <version>4.3.1</version>
             <executions>
               <execution>
                 <id>attach-groovydoc</id>
                 <goals>
-                  <goal>groovydocJar</goal>
+                  <goal>groovydoc-jar</goal>
                 </goals>
               </execution>
             </executions>
