@@ -187,6 +187,9 @@
                 <goals>
                   <goal>groovydoc-jar</goal>
                 </goals>
+                <configuration>
+                  <classifier>javadoc</classifier>
+                </configuration>
               </execution>
             </executions>
           </plugin>
