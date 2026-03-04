@@ -148,8 +148,8 @@ git commit -m "Release notes for ${TAG}"
 git push origin main
 
 # 4. Run mvn install deploy
-echo "Running mvn install deploy..."
-mvn install deploy
+echo "Running mvn install deploy -Prelease..."
+mvn install deploy -Prelease
 
 # 5. Create GitHub release with distribution zips attached
 echo "Creating GitHub release ${TAG}..."
