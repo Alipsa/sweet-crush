@@ -2,6 +2,64 @@
 
 ## v0.5, 2026-03-04
 - release 0.5
+- Release notes for v0.5
+- release 0.5
+- add publish
+- publish script
+- Add campaign/free-play mode toggle button
+- Remove unused FlowDirection import from BoardPanelTest
+- Add BoardPanel tooltip tests for special pieces, blockers, and teleporters
+- Fix tooltip accuracy for small bomb, bomb, and fish; capitalize release heading
+- Address PR review: fix starThreshold property, explicit int cast, add test
+- M8f: Add cascade score multiplier, track rebalancing, and tutorial tooltips
+- release notes stub
+- remove old dist
+- remove screenshot
+- update plan
+- update plan
+- update plan
+- Handle reshuffle exhaustion in campaign mode
+- Address fifth round of PR #2 review comments
+- Address fourth round of PR #2 review comments
+- Address third round of PR #2 review comments
+- Address second round of PR #2 review comments
+- Address PR #2 review comments
+- Fix sweeper not activating when matched in a 2x2 square
+- Revert sweeper swap-activation change
+- Allow sweepers to be swap-activated like other special pieces
+- Add campaign map and progression persistence (M8e)
+- Skip artifact cleanup job on pull_request events
+- Remove maxActive remnants and fix spawner/gravity precision
+- Address latest round of PR #1 review comments
+- Address remaining PR #1 review comments
+- Address remaining PR #1 review comments
+- Refill board after post-move ingredient and spawner updates
+- Restore unintended Screenshot.png deletion
+- Enforce ingredient-only cells without underlying candy
+- Address latest PR #1 review comments
+- Use icon ingredients and stop instant ingredient bottom drop
+- Show burst explosions alongside sweeper animation
+- Address remaining PR #1 review threads
+- add specials
+- Address second round of PR #1 review comments
+- Remove telemetry and auto-tuning from project plan
+- Revert seeded Random for SpawnerManager to preserve gameplay variation
+- Address PR #1 review comments
+- - Add ingredient/drop mode (`CHERRY`, `NUT`) and exit cells. - Add spawner tiles for blockers and specials. - Exit criteria: ingredient and spawner interaction tests green with specials enabled.
+- Clean up old distribution artifacts after successful build
+- fix fish+bomb and colors on mac
+- M9 complete
+- M8c complete
+- Include app version in distribution zip names
+- Use explicit jlink module allowlist for distributions
+- Fix macOS jlink output directory handling
+- Fix cross-platform distribution scripts for GitHub Actions
+- update docs, add license
+- Track GitHub repository and distribution CI tasks in plan
+- Initial sweet-crush project with distribution workflow
+
+## v0.5, 2026-03-04
+- release 0.5
 - add publish
 - publish script
 - Add campaign/free-play mode toggle button
