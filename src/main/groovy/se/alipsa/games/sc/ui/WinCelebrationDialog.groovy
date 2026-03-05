@@ -104,7 +104,7 @@ class WinCelebrationDialog extends JDialog {
 
       g2.setColor(new Color(220, 235, 255, 190))
       g2.setFont(getFont().deriveFont(Font.PLAIN, 16f))
-      drawCenteredString(g2, 'Next track starts in 3 seconds...', textY + 34)
+      drawCenteredString(g2, 'Continuing in 3 seconds...', textY + 34)
 
       g2.dispose()
     }

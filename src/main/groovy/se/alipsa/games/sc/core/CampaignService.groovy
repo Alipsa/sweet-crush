@@ -73,6 +73,21 @@ class CampaignService {
     return firstChapter.levels[0].trackId == level.trackId
   }
 
+  CampaignLevel findNextLevel(String trackId) {
+    boolean found = false
+    for (Chapter chapter : campaign.chapters) {
+      for (CampaignLevel level : chapter.levels) {
+        if (found) {
+          return level
+        }
+        if (level.trackId == trackId) {
+          found = true
+        }
+      }
+    }
+    return null
+  }
+
   private CampaignLevel findPreviousLevel(CampaignLevel level) {
     for (Chapter chapter : campaign.chapters) {
       for (int i = 0; i < chapter.levels.size(); i++) {

@@ -777,12 +777,18 @@ class MainFrame extends JFrame {
           campaignService.recordWin(currentTrack.id, finalScore, currentTrack.targetScore, campaignProgress)
           gameOverDialog.showForWin(MainFrame.this, currentTrackIndex, currentLoadResult.tracks.size())
           refreshCampaignMap(campaignService.campaign)
-          controlPanel.updateGoal('Select a level from the campaign map')
-          controlPanel.updateObjectives([])
-          controlPanel.updateMovesLeft(0)
-          controlPanel.updateSpecials([:])
-          controlPanel.updateScore(0)
-          boardPanel.updateBoard(null)
+
+          CampaignLevel nextLevel = campaignService.findNextLevel(currentTrack.id)
+          if (nextLevel != null && campaignService.isUnlocked(nextLevel, campaignProgress)) {
+            onCampaignLevelSelected(nextLevel.trackId)
+          } else {
+            controlPanel.updateGoal('Select a level from the campaign map')
+            controlPanel.updateObjectives([])
+            controlPanel.updateMovesLeft(0)
+            controlPanel.updateSpecials([:])
+            controlPanel.updateScore(0)
+            boardPanel.updateBoard(null)
+          }
           return
         }
 
