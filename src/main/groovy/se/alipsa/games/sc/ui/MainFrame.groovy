@@ -15,6 +15,7 @@ import se.alipsa.games.sc.io.LoadResult
 import se.alipsa.games.sc.io.ProgressStore
 import se.alipsa.games.sc.io.TrackLoader
 import se.alipsa.games.sc.model.Campaign
+import se.alipsa.games.sc.model.CampaignLevel
 import se.alipsa.games.sc.model.CampaignProgress
 import se.alipsa.games.sc.model.ObjectiveType
 import se.alipsa.games.sc.model.SpawnKind
@@ -96,7 +97,7 @@ class MainFrame extends JFrame {
     super('Sweet Crush')
     setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE)
     applyAppIcon()
-    setSize(1070, 840)
+    setSize(1260, 840)
     setLocationRelativeTo(null)
     setLayout(new BorderLayout())
     getContentPane().setBackground(APP_BACKGROUND)
